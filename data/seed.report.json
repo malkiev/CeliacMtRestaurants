@@ -1,0 +1,131 @@
+{
+  "imported": 43,
+  "feedback": 20,
+  "skipped": [],
+  "warnings": [
+    {
+      "row": 4,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 7,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 9,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 10,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 11,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 14,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 18,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 20,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 21,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 22,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 23,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 24,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 25,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 26,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 31,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 32,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 33,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 34,
+      "reason": "Locality missing; no map pin created"
+    },
+    {
+      "row": 34,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 35,
+      "reason": "Locality missing; no map pin created"
+    },
+    {
+      "row": 35,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 36,
+      "reason": "Locality missing; no map pin created"
+    },
+    {
+      "row": 36,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 37,
+      "reason": "Locality missing; no map pin created"
+    },
+    {
+      "row": 37,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 38,
+      "reason": "Locality missing; no map pin created"
+    },
+    {
+      "row": 38,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 39,
+      "reason": "Locality missing; no map pin created"
+    },
+    {
+      "row": 39,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 42,
+      "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 43,
+      "reason": "CAM flag retained privately; admin check required"
+    }
+  ]
+}

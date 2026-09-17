@@ -1,0 +1,480 @@
+{
+  "source": "https://docs.google.com/spreadsheets/d/1-JishqJEosErQiSRMAYr7Qshm8k7hxAfGvbyF3yitx8/edit",
+  "sheet": "Celiac Restaurants",
+  "fetchedAt": "2026-09-06",
+  "rows": [
+    {
+      "row": 3,
+      "cells": [
+        "Garam Tikka Masala",
+        "Restaurant",
+        "Birgu",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "Most items on menu are naturally gluten free. They are aware and take care to avoid cross contact.  They also offer gluten free roti."
+      ]
+    },
+    {
+      "row": 4,
+      "cells": [
+        "Sapori",
+        "Cafe",
+        "Birkirkara",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 5,
+      "cells": [
+        "Tunito's",
+        "By Order/Takeaway",
+        "Birkirkara",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "The place is mostly a take away but has a small seating area should one wish to grab a bite quickly.  They do not use any ingredients with gluten, since their products are made from corn flour."
+      ]
+    },
+    {
+      "row": 6,
+      "cells": [
+        "Joe's Butcher",
+        "Butcher",
+        "Birkirkara",
+        "Malta",
+        "FALSE",
+        null,
+        "daughter is coeliac and pays great attention when I order my meat"
+      ]
+    },
+    {
+      "row": 7,
+      "cells": [
+        "Paul's Delights Cafe",
+        "Cafe",
+        "Fgura",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 8,
+      "cells": [
+        "Contessa Phoenicia",
+        "Restaurant",
+        "Floriana",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "Everything is clearly Marked. Most of the items on the menu were gluten free. I even got separate bigilla and oil bowls eith my gluten free bread. Definitely recommended "
+      ]
+    },
+    {
+      "row": 9,
+      "cells": [
+        "Ta Arpa Kafe",
+        "Cafe",
+        "Gzira",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 10,
+      "cells": [
+        "D Viri's Take Away",
+        "Restaurant",
+        "Kalkara",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 11,
+      "cells": [
+        "Kalkara Regatta",
+        "Restaurant",
+        "Kalkara",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 12,
+      "cells": [
+        "Ta' Salvina",
+        "Restaurant",
+        "Kalkara ",
+        "Malta",
+        "FALSE",
+        "No menu or marked allergens ",
+        "Chef is very knowledgeable"
+      ]
+    },
+    {
+      "row": 13,
+      "cells": [
+        "Victoria Bar",
+        "Restaurant",
+        "L-Armier",
+        "Malta",
+        "FALSE",
+        null,
+        " Hallasna 28€pp u inkluż għandek deckchairs/umbrellas breakfast toast jew ftira/lunch u gelat. Isajru anke gluten free għal min hu celiac u Anka toast u ftajjar żejt jew ham and cheese jaghnlulna Però 2.50€ extra.  Not verified"
+      ]
+    },
+    {
+      "row": 14,
+      "cells": [
+        "Kyle's Kitchen",
+        "Restaurant",
+        "Marsascala",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 15,
+      "cells": [
+        "Coogi's Restaurant & Tea Garden",
+        "Restaurant",
+        "Mdina",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "They also have another Coogi's for cafe and snacks in Mdina too"
+      ]
+    },
+    {
+      "row": 16,
+      "cells": [
+        "Munchies",
+        "Restaurant",
+        "Mellieħa ",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "Ask before ordering, members have mentioned ribeye dish "
+      ]
+    },
+    {
+      "row": 17,
+      "cells": [
+        "Bounbon cafe",
+        "Restaurant",
+        "Mosta",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "One kitchen however staff are very knowledgeable about cross contamination. "
+      ]
+    },
+    {
+      "row": 18,
+      "cells": [
+        "Ta' Stringi",
+        "Restaurant",
+        "Naxxar",
+        "Malta",
+        "TRUE",
+        "All menu can be done gluten free ",
+        "Chef is very much aware of the contamination etc.  He actually comes out to talk to clients"
+      ]
+    },
+    {
+      "row": 19,
+      "cells": [
+        "Cafe Azure",
+        "Cafe",
+        "Naxxar",
+        "Malta",
+        "FALSE",
+        "Dedicated Gluten Free Menu",
+        "They seem to have a GF menu on facebook.  They have a dedicated toaster and oven for GF. Sealed food from paprika bistro.  "
+      ]
+    },
+    {
+      "row": 20,
+      "cells": [
+        "Emma's Kitchen",
+        "Cafe",
+        "San Gwann",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 21,
+      "cells": [
+        "Cilantro at Soreda Hotel",
+        "Restaurant",
+        "San Pawl",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 22,
+      "cells": [
+        "Lovage Bistro",
+        "Restaurant",
+        "San Pawl",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 23,
+      "cells": [
+        "Mezzaluna",
+        "Restaurant",
+        "San Pawl",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 24,
+      "cells": [
+        "NVKED",
+        "By Order/Takeaway",
+        "San Pawl",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 25,
+      "cells": [
+        "Sweet King",
+        "Cafe",
+        "San Pawl",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 26,
+      "cells": [
+        "Marilu's",
+        "Restaurant",
+        "Siggiewi",
+        "Malta",
+        "TRUE",
+        "Gluten is clearly marked on menu"
+      ]
+    },
+    {
+      "row": 27,
+      "cells": [
+        "TemptAsian",
+        "Restaurant",
+        "Sliema",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "Made a reservation before and alerted them about being celiac. Had some sushi and they provided gluten free soy sauce on the side."
+      ]
+    },
+    {
+      "row": 28,
+      "cells": [
+        "Surf Side",
+        "Restaurant",
+        "Sliema",
+        "Malta",
+        "FALSE",
+        "Dedicated Gluten Free Menu",
+        "They have dedicated gluten free menu, with gluten free food prepared in separate kitchen. https://surfsidemalta.com/menu/surfside-glutenfree.pdf"
+      ]
+    },
+    {
+      "row": 29,
+      "cells": [
+        "Cafe G",
+        "Cafe",
+        "St. Julians ",
+        "Malta",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "Caters for celiacs"
+      ]
+    },
+    {
+      "row": 30,
+      "cells": [
+        "Hard rock",
+        "Restaurant",
+        "St. Julians ",
+        "Malta",
+        "FALSE",
+        null,
+        "Dedicated kitchen, see https://www.instagram.com/reel/DbWDoSHiTt0/?igsh=MXczNmZjYThsNWFxOQ== "
+      ]
+    },
+    {
+      "row": 31,
+      "cells": [
+        "Aaron's Kitchen",
+        "Restaurant",
+        "Valletta",
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 32,
+      "cells": [
+        "Bistro 516",
+        "Restaurant",
+        "Valletta",
+        "Malta",
+        "TRUE",
+        "Dedicated Gluten Free Menu"
+      ]
+    },
+    {
+      "row": 33,
+      "cells": [
+        "Wild Honey",
+        "Restaurant",
+        "Valletta",
+        "Malta",
+        "TRUE",
+        "Gluten is clearly marked on menu",
+        "100% gluten free food. Pizza/bread and also some GF beer"
+      ]
+    },
+    {
+      "row": 34,
+      "cells": [
+        "Anurakti",
+        "Cafe",
+        null,
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 35,
+      "cells": [
+        "Corrie's Gluten Free Pastries",
+        "By Order/Takeaway",
+        null,
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 36,
+      "cells": [
+        "Jo's Delights",
+        "By Order/Takeaway",
+        null,
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 37,
+      "cells": [
+        "Rolling Pin Gluten Free Treats",
+        "By Order/Takeaway",
+        null,
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 38,
+      "cells": [
+        "Zero Gluten Bakes",
+        "By Order/Takeaway",
+        null,
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 39,
+      "cells": [
+        "Coeliac’s Zone",
+        "By Order/Takeaway",
+        null,
+        "Malta",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 40,
+      "cells": [
+        "Ferdie's Cocktail Bar & Restaurant",
+        "Restaurant",
+        "Għajnsielem",
+        "Gozo",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "Very helpful and knowledgable. Variety of food offered for coeliacs"
+      ]
+    },
+    {
+      "row": 41,
+      "cells": [
+        "Lantern Restaurant",
+        "Restaurant",
+        "Marsalforn",
+        "Gozo",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "Book before. Most things on the menu can be done GF. They also offer GF focaccia as a starter.  They have gluten free pizza, speak to Kevin, very knowledgeable"
+      ]
+    },
+    {
+      "row": 42,
+      "cells": [
+        "Country Terrace",
+        "Restaurant",
+        "Mgarr",
+        "Gozo",
+        "TRUE",
+        "Gluten is clearly marked on menu"
+      ]
+    },
+    {
+      "row": 43,
+      "cells": [
+        "Il-Panzier",
+        "Restaurant",
+        "Rabat",
+        "Gozo",
+        "TRUE"
+      ]
+    },
+    {
+      "row": 44,
+      "cells": [
+        "Latini",
+        "Restaurant",
+        "Xagħra",
+        "Gozo",
+        "FALSE",
+        "I don't know",
+        "Very careful re: cross contaminations. Important to indicate that you’re coeliac when booking and before ordering."
+      ]
+    },
+    {
+      "row": 45,
+      "cells": [
+        "Qbajjar Restaurant",
+        "Restaurant",
+        "Zebbug",
+        "Gozo",
+        "FALSE",
+        "Gluten is clearly marked on menu",
+        "They are very well aware of cross contamination and avoid it. They also serve gluten free bread whilst waiting for the food."
+      ]
+    }
+  ]
+}

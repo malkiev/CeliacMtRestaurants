@@ -1,0 +1,49 @@
+{
+  "name": "coeliac-malta",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs && wrangler d1 migrations apply coeliac-malta --local && wrangler d1 execute coeliac-malta --local --file=data/seed.sql",
+    "dev": "concurrently -k -n api,web \"wrangler dev --port 8787\" \"vite --host 127.0.0.1\"",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "format": "prettier --write src scripts tests public/*.json *.json *.ts",
+    "format:check": "prettier --check src scripts tests public/*.json *.json *.ts",
+    "check": "npm run typecheck && npm test && npm run build",
+    "preview": "wrangler dev --port 8787",
+    "deploy": "npm run check && wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply coeliac-malta --local",
+    "import": "node scripts/import.mjs",
+    "admin": "node scripts/admin.mjs"
+  },
+  "dependencies": {
+    "better-auth": "1.7.3",
+    "hono": "4.13.7",
+    "jpeg-js": "0.4.4",
+    "lucide-react": "1.41.0",
+    "maplibre-gl": "6.7.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260906.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.4.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "concurrently": "10.0.5",
+    "prettier": "3.9.6",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "5.0.0",
+    "wrangler": "4.129.0"
+  }
+}

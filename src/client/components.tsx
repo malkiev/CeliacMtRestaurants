@@ -1,0 +1,22 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ArrowUpRight, BadgeCheck, Check, ChevronRight, Coffee, MapPin, ShoppingBag, Star, Utensils, X } from 'lucide-react';
+import type { Advert, Place } from '../shared/types';
+import { priceBand } from '../shared/domain';
+
+export function Notice({children,error=false}:{children:ReactNode;error?:boolean}) {return <div className={`notice ${error?'error':''}`} role={error?'alert':'status'}>{children}</div>;}
+export function CamBadge(){return <span className="badge cam"><BadgeCheck size={14}/> Verified by CAM</span>;}
+export function Rating({rating,count}:{rating:number|null;count?:number}){return rating===null?<span className="muted">No reviews yet</span>:<span className="rating"><Star size={14} fill="currentColor"/> {Number(rating).toFixed(1)}{count!==undefined&&<span className="muted">({count})</span>}</span>;}
+export function Illustration({type,large=false}:{type:string;large?:boolean}){return <div className={`place-art ${large?'large':''} ${type==='Cafe'?'cafe':type==='By Order/Takeaway'?'takeaway':''}`} aria-hidden="true"><div className="art-circle"/>{type==='Cafe'?<Coffee/>:type==='By Order/Takeaway'?<ShoppingBag/>:<Utensils/>}<span>THE COMMUNITY TABLE</span></div>;}
+export function PlaceCard({place,distance}:{place:Place;distance?:number}){return <a className="place-card" href={`/places/${place.slug}`}>
+  <div className="card-photo">{place.photo?<img src={`/photos/${place.photo}?size=thumb`} alt={`Community photo of ${place.name}`} loading="lazy"/>:<Illustration type={place.type}/>}<span className="island-label">{place.island}</span></div>
+  <div className="card-copy"><div className="eyebrow">{place.type==='Cafe'?'Café':place.type}{place.price_min!==null&&<span> · {'€'.repeat(priceBand(place.price_max??place.price_min))}</span>}</div><h3>{place.name}</h3><p className="location"><MapPin size={14}/>{place.locality||'Locality to be confirmed'}{distance!==undefined&&<span> · {distance.toFixed(1)} km</span>}</p><div className="card-bottom"><Rating rating={place.rating} count={place.review_count}/>{place.cam_verified?<CamBadge/>:<span className="card-arrow"><ChevronRight size={18}/></span>}</div>{place.business_status!=='open'&&<span className="badge warning">{place.business_status==='closed'?'Permanently closed':'Temporarily closed'}</span>}</div>
+</a>;}
+export function Sponsor({ad}:{ad:Advert|undefined}){if(!ad)return null;return <aside className="sponsor"><span className="eyebrow">Advertisement</span><a href={ad.url} target="_blank" rel="sponsored noopener noreferrer">{ad.image_url&&<img src={ad.image_url} alt="" loading="lazy"/>}<div><strong>{ad.title}</strong><p>{ad.body}</p></div><ArrowUpRight/></a></aside>;}
+export function Modal({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}){
+  const ref=useRef<HTMLDialogElement>(null);
+  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;ref.current?.showModal();document.body.style.overflow='hidden';return()=>{document.body.style.overflow='';previous?.focus();};},[]);
+  return <dialog ref={ref} className="modal" onCancel={e=>{e.preventDefault();onClose();}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}><div className="modal-top"><h2>{title}</h2><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X/></button></div>{children}</dialog>;
+}
+export function FormStatus({error,success}:{error:string;success?:string}){return <>{error&&<Notice error>{error}</Notice>}{success&&<Notice><Check size={16}/>{success}</Notice>}</>;}
+export function SubmitButton({busy,children='Send for approval'}:{busy:boolean;children?:ReactNode}){return <button className="button primary" type="submit" disabled={busy}>{busy?'Please wait…':children}</button>;}
+export function useAction(){const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [success,setSuccess]=useState('');async function run(action:()=>Promise<void>,message='Saved'){setBusy(true);setError('');setSuccess('');try{await action();setSuccess(message);}catch(e){setError(e instanceof Error?e.message:'Please try again.');}finally{setBusy(false);}}return {busy,error,success,run};}
