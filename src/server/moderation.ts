@@ -1,6 +1,8 @@
 import { HTTPException } from 'hono/http-exception';
 import type { Member, Submission } from '../shared/types';
 import { owns } from './db';
+import { checkDuplicate, insertPlace, updatePlace, parsePlaceInput } from './places';
+import { checkCover, coverSchema } from './covers';
 import { placeSchema, reviewSchema, replySchema } from './validation';
 
 export async function decide(db:D1Database, member:Member, id:string, approved:boolean, reason:string) {
@@ -27,13 +29,18 @@ export async function decide(db:D1Database, member:Member, id:string, approved:b
       stmts.push(db.prepare(`INSERT INTO replies(id,feedback_id,place_id,author_id,author_name,body,created_at,updated_at) SELECT ?,?,?,?,?,?,?,? WHERE ${guard} ON CONFLICT(feedback_id) DO UPDATE SET body=excluded.body,author_id=excluded.author_id,author_name=excluded.author_name,updated_at=excluded.updated_at,visible=1`).bind(crypto.randomUUID(),row.target_id,row.place_id,row.author_id,author?.name||'Restaurant representative',v.body,now,now,id,token));
     } else if(row.kind==='place'){
       const v=placeSchema.parse(p);const placeId=crypto.randomUUID();
-      const slug=v.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+placeId.slice(0,6);
-      if(await db.prepare('SELECT id FROM places WHERE lower(name)=lower(?) AND lower(locality)=lower(?) AND island=?').bind(v.name,v.locality,v.island).first())throw new HTTPException(409,{message:'A matching place exists. Reject this duplicate and suggest a correction instead.'});
-      stmts.push(db.prepare(`INSERT INTO places(id,slug,name,type,locality,island,address,latitude,longitude,cuisines,price_min,price_max,price_basis,price_updated,menu_info,website,menu_url,social_url,phone,business_status) SELECT ${Array(20).fill('?').join(',')} WHERE ${guard}`).bind(placeId,slug,v.name,v.type,v.locality,v.island,v.address,v.latitude,v.longitude,JSON.stringify(v.cuisines),v.price_min,v.price_max,v.price_basis,v.price_min===null?null:now,v.menu_info,v.website,v.menu_url,v.social_url,v.phone,v.business_status,id,token));
+      await checkDuplicate(db,v);
+      stmts.push(insertPlace(db,placeId,v,guard,[id,token]));
+    } else if(row.kind==='correction' && 'cover_photo_id' in p){
+      const v=coverSchema.parse(p);
+      await checkCover(db,row.author_id,row.place_id!,v.cover_photo_id);
+      stmts.push(db.prepare(`INSERT INTO place_covers(place_id,photo_id) SELECT ?,? WHERE ${guard} ON CONFLICT(place_id) DO UPDATE SET photo_id=excluded.photo_id`).bind(row.place_id,v.cover_photo_id,id,token));
     } else if(row.kind==='correction'){
-      // A correction is a proposed full revision. Moderators review the complete before/after.
-      const v=placeSchema.parse(p);
-      stmts.push(db.prepare(`UPDATE places SET name=?,type=?,locality=?,island=?,address=?,latitude=?,longitude=?,coordinates_checked=0,cuisines=?,price_min=?,price_max=?,price_basis=?,price_updated=?,menu_info=?,website=?,menu_url=?,social_url=?,phone=?,business_status=?,updated_at=? WHERE id=? AND ${guard}`).bind(v.name,v.type,v.locality,v.island,v.address,v.latitude,v.longitude,JSON.stringify(v.cuisines),v.price_min,v.price_max,v.price_basis,v.price_min===null?null:now,v.menu_info,v.website,v.menu_url,v.social_url,v.phone,v.business_status,now,row.place_id,id,token));
+      const existing=await db.prepare('SELECT * FROM places WHERE id=?').bind(row.place_id).first<Record<string,unknown>>();
+      if(!existing)throw new HTTPException(404,{message:'Place not found'});
+      const v=parsePlaceInput(p,existing);
+      await checkDuplicate(db,v,row.place_id!);
+      stmts.push(updatePlace(db,row.place_id!,v,guard,[id,token]));
     } else if(row.kind==='owner_claim'){
       stmts.push(db.prepare(`INSERT INTO ownerships(user_id,place_id,verified_by,verified_at,active) SELECT ?,?,?,?,1 WHERE ${guard} ON CONFLICT(user_id,place_id) DO UPDATE SET active=1,verified_by=excluded.verified_by,verified_at=excluded.verified_at`).bind(row.author_id,row.place_id,member.id,now,id,token));
     } else if(row.kind==='report'){

@@ -1,4 +1,4 @@
-const CACHE = 'coeliac-malta-shell-v1';
+const CACHE = 'glutenfree-mt-shell-v2';
 const SHELL = ['/offline.html', '/icon.svg', '/icon-192.png', '/manifest.webmanifest'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
