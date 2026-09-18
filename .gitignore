@@ -2,7 +2,7 @@ node_modules/
 dist/
 .wrangler/
 .tools/
-.dev.vars
+.dev.vars*
 .env*
 !.env.example
 test-results/
@@ -11,3 +11,13 @@ coverage/
 data/private/
 *.log
 
+
+# Local databases and credential files
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.pem
+*.key
+*.pfx
+*.p12

@@ -12,7 +12,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "node node_modules/@playwright/test/cli.js test",
     "format": "prettier --write src scripts tests public/*.json *.json *.ts",
     "format:check": "prettier --check src scripts tests public/*.json *.json *.ts",
     "check": "npm run typecheck && npm test && npm run build",

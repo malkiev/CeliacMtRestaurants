@@ -22,7 +22,7 @@ app.get('*',async c=>{
   const initial=await bootstrap(c.env,c.req.url);
   const template=await c.env.ASSETS.fetch(new Request(new URL('/index.html',c.req.url)));
   if(!template.ok)return c.text('Run npm run build before starting the production preview.',503);
-  const title=initial.detail?`${initial.detail.place.name} — Coeliac Malta`:'Coeliac Malta — Good food. Shared knowledge.';
+  const title=initial.detail?`${initial.detail.place.name} — glutenfree.mt`:'glutenfree.mt — Good food. Shared knowledge.';
   const markup=renderToString(<App initial={initial} path={path} search={new URL(c.req.url).search}/>);
   const json=JSON.stringify(initial).replace(/</g,'\\u003c');
   const html=(await template.text()).replace(/<title>.*?<\/title>/,`<title>${escape(title)}</title>`).replace('<!--app-->',markup).replace('<!--bootstrap-->',`<script>window.__BOOTSTRAP__=${json}</script>`);

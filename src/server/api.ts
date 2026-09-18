@@ -5,9 +5,11 @@ import type { AppEnv } from './env';
 import type { Member, Submission } from '../shared/types';
 import { isLocal } from './env';
 import { createAuth } from './auth';
-import { audit, bootstrap, getDetail, owns, placeSelect } from './db';
-import { adSchema, linkSchema, placeSchema, replySchema, reviewSchema, text } from './validation';
+import { audit, bootstrap, getDetail, owns, placeSelect, storedPlace } from './db';
+import { adSchema, linkSchema, replySchema, reviewSchema, text } from './validation';
 import { decide } from './moderation';
+import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility } from './places';
+import { checkCover, coverSchema } from './covers';
 
 export const api=new Hono<AppEnv>();
 api.use('*',async(c,next)=>{
@@ -57,7 +59,17 @@ api.post('/submissions',async c=>{
     if(!await owns(db,member.id,input.place_id!))throw new HTTPException(403,{message:'Only a verified owner of this place can reply'});
     if(!target||!await db.prepare('SELECT id FROM feedback WHERE id=? AND place_id=? AND visible=1').bind(target,input.place_id).first())throw new HTTPException(404,{message:'Feedback not found'});
     payload=replySchema.parse(input.payload);
-  }else if(input.kind==='place'||input.kind==='correction')payload=placeSchema.parse(input.payload);
+  }else if(input.kind==='correction' && input.payload && typeof input.payload==='object' && 'cover_photo_id' in input.payload){
+    const v=coverSchema.parse(input.payload);
+    await checkCover(db,member.id,input.place_id!,v.cover_photo_id);
+    payload=v;
+  }else if(input.kind==='place'||input.kind==='correction'){
+    const existing=input.kind==='correction'?await db.prepare('SELECT * FROM places WHERE id=?').bind(input.place_id).first<Record<string,unknown>>():undefined;
+    const parsed=parsePlaceInput(input.payload,existing||undefined);
+    if(input.kind==='place' && !parsed.business_types.length)throw new HTTPException(400,{message:'Choose at least one business type'});
+    // Keep omitted fields omitted so old clients cannot reset newer fields on approval.
+    payload=input.kind==='correction'?Object.fromEntries(Object.entries(parsed).filter(([key])=>Object.hasOwn(input.payload as object,key))):parsed;
+  }
   else if(input.kind==='owner_claim')payload=z.object({body:text(1000)}).parse(input.payload);
   else{
     payload=z.object({body:text(1000),target_type:z.enum(['feedback','reply','photo'])}).parse(input.payload);
@@ -105,6 +117,7 @@ api.post('/moderation/:id/decision',async c=>{const v=z.object({approved:z.boole
 api.get('/moderation/history',async c=>c.json((await c.env.DB.prepare('SELECT a.id,a.action,a.target_id,a.detail,a.created_at,u.name actor_name FROM audit_log a LEFT JOIN user u ON u.id=a.actor_id ORDER BY a.created_at DESC LIMIT 100').all()).results));
 api.post('/moderation/places/:id/coordinates',async c=>{
   const m=c.get('member');const id=c.req.param('id');if(await owns(c.env.DB,m.id,id))throw new HTTPException(403);
+  if(await c.env.DB.prepare("SELECT 1 FROM places WHERE id=? AND premises='none'").bind(id).first())throw new HTTPException(400,{message:'A business without public premises cannot have a public map pin'});
   const v=z.object({latitude:z.number().min(35.7).max(36.2),longitude:z.number().min(14.1).max(14.7)}).parse(await c.req.json());
   await c.env.DB.batch([c.env.DB.prepare('UPDATE places SET latitude=?,longitude=?,coordinates_checked=1,updated_at=? WHERE id=?').bind(v.latitude,v.longitude,new Date().toISOString(),id),audit(c.env.DB,m.id,'check_coordinates',id,JSON.stringify(v))]);return c.json({ok:true});
 });
@@ -114,7 +127,13 @@ api.get('/admin/data',async c=>{
   const [users,places,links,adverts,ownerships]=await Promise.all([
     c.env.DB.prepare("SELECT u.id,u.name,u.email,COALESCE(p.role,'member') role FROM user u LEFT JOIN profiles p ON p.user_id=u.id ORDER BY u.name LIMIT 500").all(),
     c.env.DB.prepare(`${placeSelect} ORDER BY p.name`).all(),c.env.DB.prepare('SELECT * FROM useful_links ORDER BY sort_order').all(),c.env.DB.prepare('SELECT * FROM adverts').all(),c.env.DB.prepare('SELECT * FROM ownerships').all(),
-  ]);return c.json({users:users.results,places:places.results.map(p=>({...p,cuisines:JSON.parse(String(p.cuisines))})),links:links.results,adverts:adverts.results,ownerships:ownerships.results});
+  ]);return c.json({users:users.results,places:places.results.map(p=>({...storedPlace(p),catalogue_enabled:!!p.catalogue_enabled})),links:links.results,adverts:adverts.results,ownerships:ownerships.results});
+});
+api.post('/admin/places',async c=>{const raw=await c.req.json();const id=z.string().min(1).optional().parse(raw.id);return c.json({id:await saveAdminPlace(c.env.DB,c.get('member'),raw.place,id)});});
+api.post('/admin/places/:id/catalogue',async c=>{
+  const v=z.object({enabled:z.boolean()}).strict().parse(await c.req.json());
+  await setCatalogueEligibility(c.env.DB,c.get('member'),c.req.param('id'),v.enabled);
+  return c.json({ok:true});
 });
 api.post('/admin/roles',async c=>{
   const m=c.get('member');const v=z.object({user_id:z.string(),role:z.enum(['member','moderator','admin'])}).parse(await c.req.json());
@@ -136,5 +155,5 @@ api.post('/admin/adverts',async c=>{const raw=await c.req.json();const v=adSchem
 api.get('/admin/export',async c=>{
   const rows=(await c.env.DB.prepare('SELECT * FROM places ORDER BY name').all()).results;
   const csv=(v:unknown)=>`"${String(v??'').replace(/^[=+@-]/,"'$&").replaceAll('"','""')}"`;
-  const keys=Object.keys(rows[0]||{});c.header('Content-Disposition','attachment; filename="coeliac-malta-places.csv"');c.header('Content-Type','text/csv; charset=utf-8');return c.body('\uFEFF'+[keys.map(csv).join(','),...rows.map(r=>keys.map(k=>csv(r[k])).join(','))].join('\r\n'));
+  const keys=Object.keys(rows[0]||{});c.header('Content-Disposition','attachment; filename="glutenfree-mt-places.csv"');c.header('Content-Type','text/csv; charset=utf-8');return c.body('\uFEFF'+[keys.map(csv).join(','),...rows.map(r=>keys.map(k=>csv(r[k])).join(','))].join('\r\n'));
 });

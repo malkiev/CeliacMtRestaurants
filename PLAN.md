@@ -115,7 +115,7 @@ Defer push notifications, native app-store releases, bookings, ad-network integr
 
 - Which admins will perform the manual CAM-status and restaurant-owner checks? Agree a short public explanation of the CAM label and a simple private owner-check process.
 - What per-person meal/drink basis and euro thresholds should define the cost bands? One overall 1–5 experience rating remains the proposed default.
-- Site name/domain and final identity can follow the POC; the project is independent and must clearly target coeliacs in Malta. No CAM branding is assumed.
+- The site name and domain are confirmed as glutenfree.mt; the project is independent and must clearly target coeliacs in Malta. No CAM branding is assumed.
 - Is there a desired pilot or launch date? Exact audience size remains unknown beyond the existing community of at least 200 members.
 
 **Sources checked**
@@ -127,3 +127,12 @@ Defer push notifications, native app-store releases, bookings, ad-network integr
 - Supabase pricing: https://supabase.com/pricing
 - MapTiler pricing: https://www.maptiler.com/cloud/pricing/
 - Google Maps URLs: https://developers.google.com/maps/documentation/urls/get-started
+
+
+## Implemented refinement: business classification and simpler forms
+
+Businesses can select multiple types: Restaurant, Café, Bakery, Butcher, Food shop, Food producer, and Importer/distributor. Services (dine-in, takeaway/collection, delivery), advance-order requirements, and premises status are independent fields. Imported combined By Order/Takeaway types require admin classification; no services or premises are inferred. Listings without public premises remain searchable but do not expose an address, map pin, directions, or distance. Meal pricing can be Not applicable.
+
+The add form prioritises name, business types, island, locality, menu options, and optional menu notes. All subsequent information is grouped into collapsed optional sections. Multi-location information is last, in plain language, and can be skipped. Existing branch-scoped ownership, reviews, photos, and CAM verification remain separate.
+
+Product catalogues require a separate future plan. This implementation only adds an admin-only, audited catalogue eligibility flag, defaulting to off. The agreed future direction is a gluten-free catalogue on eligible business pages, maintained by verified owners and admins, with direct business contact for orders; no product implementation is part of this change.

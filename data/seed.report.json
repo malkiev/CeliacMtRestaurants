@@ -1,11 +1,15 @@
 {
   "imported": 43,
-  "feedback": 20,
+  "feedback": 0,
   "skipped": [],
   "warnings": [
     {
       "row": 4,
       "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 5,
+      "reason": "Business classification needs review; source type preserved without inferring services or premises"
     },
     {
       "row": 7,
@@ -49,6 +53,10 @@
     },
     {
       "row": 24,
+      "reason": "Business classification needs review; source type preserved without inferring services or premises"
+    },
+    {
+      "row": 24,
       "reason": "CAM flag retained privately; admin check required"
     },
     {
@@ -81,6 +89,10 @@
     },
     {
       "row": 35,
+      "reason": "Business classification needs review; source type preserved without inferring services or premises"
+    },
+    {
+      "row": 35,
       "reason": "Locality missing; no map pin created"
     },
     {
@@ -89,6 +101,10 @@
     },
     {
       "row": 36,
+      "reason": "Business classification needs review; source type preserved without inferring services or premises"
+    },
+    {
+      "row": 36,
       "reason": "Locality missing; no map pin created"
     },
     {
@@ -97,6 +113,10 @@
     },
     {
       "row": 37,
+      "reason": "Business classification needs review; source type preserved without inferring services or premises"
+    },
+    {
+      "row": 37,
       "reason": "Locality missing; no map pin created"
     },
     {
@@ -105,11 +125,19 @@
     },
     {
       "row": 38,
+      "reason": "Business classification needs review; source type preserved without inferring services or premises"
+    },
+    {
+      "row": 38,
       "reason": "Locality missing; no map pin created"
     },
     {
       "row": 38,
       "reason": "CAM flag retained privately; admin check required"
+    },
+    {
+      "row": 39,
+      "reason": "Business classification needs review; source type preserved without inferring services or premises"
     },
     {
       "row": 39,

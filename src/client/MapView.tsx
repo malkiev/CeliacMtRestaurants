@@ -5,7 +5,7 @@ import { Notice } from './components';
 
 export default function MapView({places,styleUrl}:{places:Place[];styleUrl:string}){
   const root=useRef<HTMLDivElement>(null);const [error,setError]=useState('');
-  const pinned=places.filter(p=>p.coordinates_checked&&p.latitude!==null&&p.longitude!==null);
+  const pinned=places.filter(p=>p.premises!=='none'&&p.coordinates_checked&&p.latitude!==null&&p.longitude!==null);
   useEffect(()=>{
     if(!styleUrl||!root.current)return;
     let map:import('maplibre-gl').Map|undefined;let cancelled=false;
@@ -25,5 +25,5 @@ export default function MapView({places,styleUrl}:{places:Place[];styleUrl:strin
     }).catch(()=>setError('The map could not load. Please use the list.'));
     return()=>{cancelled=true;map?.remove();};
   },[styleUrl,places]);
-  return <section className="map-section">{!styleUrl?<div className="map-unavailable"><MapPin size={36}/><h2>A better view of the islands</h2><p>The interactive map will be available once a map provider is connected. All places are available in the list.</p><a className="button" href="/">Browse places</a></div>:<div ref={root} className="map-canvas" aria-label="Map of places in Malta and Gozo"/>}{error&&<Notice error>{error}</Notice>}<p className="small muted">{pinned.length} checked map pins · {places.length-pinned.length} places awaiting location checks. Distances are approximate, not road or ferry travel times.</p></section>;
+  return <section className="map-section">{!styleUrl?<div className="map-unavailable"><MapPin size={36}/><h2>A better view of the islands</h2><p>The interactive map will be available once a map provider is connected. All places are available in the list.</p><a className="button" href="/">Browse places</a></div>:<div ref={root} className="map-canvas" aria-label="Map of places in Malta and Gozo"/>}{error&&<Notice error>{error}</Notice>}<p className="small muted">{pinned.length} checked map pins · {places.length-pinned.length} businesses without a public checked pin. Distances are approximate, not road or ferry travel times.</p></section>;
 }

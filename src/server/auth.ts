@@ -23,7 +23,7 @@ export function createAuth(env: Bindings) {
           return;
         }
         if (!env.RESEND_API_KEY || !env.EMAIL_FROM) throw new Error('Email sign-in is not configured');
-        const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: env.EMAIL_FROM, to: email, subject: 'Your Coeliac Malta sign-in link', text: `Sign in to Coeliac Malta:\n\n${url}\n\nThis link expires in 10 minutes. If you did not request it, ignore this email.` }) });
+        const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: env.EMAIL_FROM, to: email, subject: 'Your glutenfree.mt sign-in link', text: `Sign in to glutenfree.mt:\n\n${url}\n\nThis link expires in 10 minutes. If you did not request it, ignore this email.` }) });
         if (!response.ok) throw new Error('Unable to send sign-in email');
       },
     })],
