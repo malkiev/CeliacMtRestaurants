@@ -28,7 +28,7 @@
 	"vars": {
 		"ENVIRONMENT": "production",
 		"APP_URL": "https://glutenfree.mt",
-		"MAP_STYLE_URL": ""
+		"MAP_STYLE_URL": "https://api.maptiler.com/maps/streets-v4/style.json?key=zJmu2J4eLnz3cmoYAhx6"
 	},
 	"triggers": {
 		"crons": [
