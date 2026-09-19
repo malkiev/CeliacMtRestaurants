@@ -2,7 +2,15 @@
 
 An independent community directory for Malta and Gozo. The chosen brand and public domain are **glutenfree.mt**, with production URL `https://glutenfree.mt`. The implementation uses React and Vite for the client, Hono on Cloudflare Workers, D1 for records, R2 for photos, and Better Auth for email links and Google sign-in. Product decisions and launch scope remain in [PLAN.md](PLAN.md).
 
-The staged launch approach, required accounts, authentication configuration, and recovery steps are in [DEPLOYMENT.md](DEPLOYMENT.md).
+Production deployment, required accounts, authentication configuration, and recovery steps are in [DEPLOYMENT.md](DEPLOYMENT.md). Staging is deferred for the early launch.
+
+## GitHub Actions
+
+[CI and production](.github/workflows/ci.yml) runs on PRs targeting `main` when opened, updated, reopened, or marked ready for review. It runs `npm ci`, type-checking, behavioural tests, a production build, Playwright browser tests, and a Wrangler deployment dry run. PRs do not deploy or receive Cloudflare credentials. Failed browser runs upload screenshots for seven days.
+
+Pushes and merges to `main` run the same checks, then apply pending production D1 migrations and deploy the Worker and assets. Deployment runs are serialized and are not cancelled midway. The Actions **Run workflow** button also supports a manual deployment from `main`; other branches run checks only.
+
+Before the first deployment, add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in GitHub's **Settings > Secrets and variables > Actions**. See [the production setup instructions](DEPLOYMENT.md#github-actions-production-deployment) for token permissions and configuration. The workflow does not require staging.
 
 ## Local setup
 
