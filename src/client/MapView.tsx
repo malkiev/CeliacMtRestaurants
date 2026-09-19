@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Place } from '../shared/types';
 import { MapPin } from 'lucide-react';
 import { Notice } from './components';
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 export default function MapView({places,styleUrl}:{places:Place[];styleUrl:string}){
   const root=useRef<HTMLDivElement>(null);const [error,setError]=useState('');
@@ -9,8 +10,9 @@ export default function MapView({places,styleUrl}:{places:Place[];styleUrl:strin
   useEffect(()=>{
     if(!styleUrl||!root.current)return;
     let map:import('maplibre-gl').Map|undefined;let cancelled=false;
-    import('maplibre-gl').then(({Map,NavigationControl,Popup})=>{
+    import('maplibre-gl').then(({Map,NavigationControl,Popup,setWorkerUrl})=>{
       if(cancelled)return;
+      setWorkerUrl(mapWorkerUrl);
       map=new Map({container:root.current!,style:styleUrl,center:[14.4,35.94],zoom:10});map.addControl(new NavigationControl());
       map.on('error',()=>setError('The map could not load. You can still find places in the list.'));
       map.on('load',()=>{
