@@ -1,5 +1,35 @@
 # Deployment plan
 
+## GitHub Actions production deployment
+
+The current launch uses production only. The staging recommendations later in this document are future work, not prerequisites for this workflow.
+
+The [CI and production workflow](.github/workflows/ci.yml) tests PRs targeting `main`. After a merge or push to `main`, it repeats the checks, applies pending D1 migrations, builds and deploys `coeliac-malta`, and checks the homepage and map page over HTTPS. PRs never deploy. The browser tests use mocked application data and do not exercise production Google OAuth, email delivery, or the live database. The post-deploy HTTP checks confirm reachability, not map rendering or authentication.
+
+### One-time GitHub setup
+
+1. In Cloudflare, create a dedicated API token using the **Edit Cloudflare Workers** template. Scope it to the account hosting this app and the `glutenfree.mt` zone. Include **Account > D1 > Edit** for migrations, and permissions for the existing R2 binding (the Workers template includes Workers R2 Storage access). Do not use a Global API Key.
+2. In the GitHub repository, open **Settings > Secrets and variables > Actions > New repository secret** and add:
+   - `CLOUDFLARE_API_TOKEN`: the new token.
+   - `CLOUDFLARE_ACCOUNT_ID`: the account ID from the Cloudflare dashboard.
+3. Commit and push the workflow, then merge it into `main`. Open **Actions > CI and production** to inspect checks and deployment logs. These steps require no staging resources. The `production` GitHub environment records deployment history; do not add required reviewers if fully automatic deployment is desired.
+4. If Cloudflare Workers Builds is connected to this repository, disable its automatic deployment before enabling this workflow, so only one system deploys production.
+5. Optionally protect `main` by requiring the **Tests and build** status check before merging.
+
+Cloudflare's [GitHub Actions guide](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/) describes token creation and account credentials.
+
+### Configuration and database changes
+
+Production uses the existing D1 and R2 bindings in `wrangler.jsonc`. Do not run `npm run setup` in CI; it creates local settings and imports development seed data. The deployment only applies migrations and does not seed production.
+
+Keep `BETTER_AUTH_SECRET`, Google OAuth secrets, and `RESEND_API_KEY` in the deployed Worker. They do not need to be copied into GitHub. `wrangler deploy --keep-vars` retains dashboard-only ordinary variables, such as `EMAIL_FROM`; values explicitly present in `wrangler.jsonc`, including `APP_URL` and `MAP_STYLE_URL`, still take precedence. Local `.dev.vars` is not uploaded.
+
+Review migrations in each PR: they run against production before the new Worker is deployed and must remain compatible with the currently running version. If a migration fails, deployment stops. If deployment fails after migrations succeed, the schema changes remain. A Worker rollback does not roll back D1; use a forward fix or a deliberately reviewed database recovery procedure.
+
+GitHub Actions runner minutes, short-lived test artifacts, and normal Cloudflare usage apply; this workflow provisions no additional hosting resources.
+
+## Original provisioning walkthrough
+
 Prepared 18 September 2026. This is a plan, not a record of completed deployment.
 
 ## Cloudflare setup walkthrough
