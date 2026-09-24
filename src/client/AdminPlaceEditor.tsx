@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Member, Place } from '../shared/types';
+import type { BusinessType, Member, Place } from '../shared/types';
 import { request } from './api';
 import { FormStatus, Notice, SubmitButton, useAction } from './components';
 import { PlaceForm } from './PlaceForm';
@@ -8,10 +8,12 @@ export function AdminPlaceEditor({
   place,
   member,
   reload,
+  businessTypes,
 }: {
   place: Place;
   member: Member;
   reload: () => Promise<void>;
+  businessTypes?: BusinessType[];
 }) {
   const a = useAction();
   const initialVerification = place.cam_verified_at
@@ -45,6 +47,7 @@ export function AdminPlaceEditor({
         key={`${place.id}:${place.updated_at}`}
         member={member}
         place={place}
+        businessTypes={businessTypes}
         onSave={
           representsPlace
             ? undefined

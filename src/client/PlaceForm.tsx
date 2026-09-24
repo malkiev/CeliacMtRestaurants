@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import type { Member, Place } from '../shared/types';
-import { CUISINES, PLACE_TYPES, SERVICES, businessTypes } from '../shared/domain';
+import type { BusinessType, Member, Place } from '../shared/types';
+import { CUISINES, PLACE_TYPES, SERVICES, businessTypes as getBusinessTypes } from '../shared/domain';
 import {
   LOCALITIES,
   MENU_OPTIONS,
@@ -16,14 +16,15 @@ type Props = {
   initial?: Partial<Place>;
   onDone?: () => void;
   onSave?: (payload: Record<string, unknown>) => Promise<void>;
+  businessTypes?: BusinessType[];
 };
 
-export function PlaceForm({ member, place, initial, onDone, onSave }: Props) {
+export function PlaceForm({ member, place, initial, onDone, onSave, businessTypes }: Props) {
   const source = place || initial;
   const a = useAction();
   const [island, setIsland] = useState<'Malta' | 'Gozo'>(source?.island || 'Malta');
   const [locality, setLocality] = useState(normaliseLocality(source?.locality || '', island));
-  const [types, setTypes] = useState<string[]>(source ? businessTypes(source) : []);
+  const [types, setTypes] = useState<string[]>(source ? getBusinessTypes(source) : []);
   const [services, setServices] = useState<string[]>(source?.services || []);
   const [cuisines, setCuisines] = useState<string[]>(source?.cuisines || []);
   const [menuOptions, setMenuOptions] = useState<string[]>(source?.menu_options || ['unknown']);
@@ -129,15 +130,15 @@ export function PlaceForm({ member, place, initial, onDone, onSave }: Props) {
       <fieldset>
         <legend>Business types{!place ? ' (choose at least one)' : ''}</legend>
         <div className="tag-options">
-          {PLACE_TYPES.map((type) => (
-            <label key={type}>
+          {(businessTypes?.filter((type) => type.active || types.includes(type.key)) || PLACE_TYPES.map((key, index) => ({key,label:key,category:'restaurant' as const,sort_order:index,active:1}))).map((type) => (
+            <label key={type.key}>
               <input
                 name="business_types"
                 type="checkbox"
-                value={type}
-                checked={types.includes(type)}
+                value={type.key}
+                checked={types.includes(type.key)}
                 onChange={(e) => {
-                  setTypes(toggle(types, type, e.target.checked));
+                  setTypes(toggle(types, type.key, e.target.checked));
                   const first =
                     e.currentTarget.form?.querySelector<HTMLInputElement>(
                       '[name="business_types"]',
@@ -145,7 +146,7 @@ export function PlaceForm({ member, place, initial, onDone, onSave }: Props) {
                   first?.setCustomValidity('');
                 }}
               />
-              {type === 'Cafe' ? 'Café' : type}
+              {type.label === 'Cafe' ? 'Café' : type.label}
             </label>
           ))}
         </div>

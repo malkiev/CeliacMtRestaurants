@@ -49,6 +49,7 @@ export function importRows(input) {
     const knownTypes = [
       'Restaurant',
       'Cafe',
+      'Bar',
       'Bakery',
       'Butcher',
       'Food shop',

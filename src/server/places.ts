@@ -4,6 +4,7 @@ import type { Member } from '../shared/types';
 import { normaliseLocality } from '../shared/place-options';
 import { audit, owns, storedPlace } from './db';
 import { placeSchema } from './validation';
+import { assertBusinessTypes } from './business-types';
 
 type PlaceInput = z.output<typeof placeSchema>;
 const fields = [
@@ -128,6 +129,7 @@ export async function saveAdminPlace(db: D1Database, member: Member, input: unkn
     ? await db.prepare('SELECT * FROM places WHERE id=?').bind(id).first<Record<string, unknown>>()
     : null;
   const v = parsePlaceInput(input, existing || undefined);
+  await assertBusinessTypes(db, v.business_types, !!id);
   if (!id && !v.business_types.length)
     throw new HTTPException(400, { message: 'Choose at least one business type' });
   if (id) {
