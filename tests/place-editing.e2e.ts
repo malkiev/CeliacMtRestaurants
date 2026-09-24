@@ -147,13 +147,11 @@ for (const admin of [true, false]) {
       canvas.height = 20;
       return canvas.toDataURL('image/png').split(',')[1];
     });
-    await page
-      .locator('input[name="photos"]')
-      .setInputFiles({
-        name: 'photo.png',
-        mimeType: 'image/png',
-        buffer: Buffer.from(data, 'base64'),
-      });
+    await page.locator('input[name="photos"]').setInputFiles({
+      name: 'photo.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(data, 'base64'),
+    });
     await page.getByLabel('Caption', { exact: true }).fill('Example photo');
     await page
       .getByRole('button', { name: admin ? 'Save changes' : 'Send for approval', exact: true })
@@ -226,21 +224,41 @@ test('locality choices follow the island and owners can propose a description', 
   });
 });
 
-test('welcome card has clear buttons and fits desktop and small screens', async ({
+test('compact directory introduction keeps search visible on desktop and mobile', async ({
   page,
 }, testInfo) => {
   await setup(page);
-  for (const width of [1280, 768, 375, 320]) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto('/');
-    await expect(page.getByRole('link', { name: 'Find your next favourite' })).toHaveClass(
-      /button primary/,
-    );
-    await expect(page.getByRole('link', { name: 'Get to know us' })).toHaveClass(/button/);
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
-      .toBe(true);
-    await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: true });
+  for (const path of ['/', '/map']) {
+    for (const width of [1280, 768, 375, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        'Gluten-free places in Malta & Gozo',
+      );
+      await expect(page.locator('.directory-intro p')).toHaveText(
+        'Find places that cater for coeliacs to eat, shop, and order gluten-free food, with experiences shared by the coeliac community.',
+      );
+      await expect(page.locator('.welcome-panel, .hero-scene, .community-strip')).toHaveCount(0);
+      await expect(page.getByRole('link', { name: 'Find your next favourite' })).toHaveCount(0);
+      await expect(page.getByRole('link', { name: 'Get to know us' })).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Find a business for you' })).toHaveCount(0);
+      const search = page.getByRole('textbox', { name: 'Search places' });
+      await expect(search).toBeInViewport({ ratio: 1 });
+      await expect(
+        page.locator('.results-summary').getByRole('link', { name: 'Add a business' }),
+      ).toHaveAttribute('href', '/suggest');
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+        .toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`${path === '/map' ? 'map' : 'home'}-${width}.png`),
+        fullPage: true,
+      });
+      await search.fill('No matching business');
+      await expect(page.locator('.results-summary')).toContainText('0 places to explore');
+      await search.fill('Example');
+      await expect(page.locator('.results-summary')).toContainText('1 place to explore');
+    }
   }
 });
 
