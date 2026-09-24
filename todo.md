@@ -1,4 +1,5 @@
 -short description from business?
 -loading data in admin not always loads? (stringi)
--add winebar as business type
--remover logo
+-add winebar as business type (done)
+-remove logo
+-user pref (done)

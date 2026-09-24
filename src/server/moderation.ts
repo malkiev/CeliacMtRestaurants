@@ -4,6 +4,7 @@ import { owns } from './db';
 import { checkDuplicate, insertPlace, updatePlace, parsePlaceInput } from './places';
 import { checkCover, coverSchema } from './covers';
 import { placeSchema, reviewSchema, replySchema } from './validation';
+import { getIdentity } from './profiles';
 
 type Contribution = Pick<Submission, 'id'|'kind'|'author_id'|'place_id'|'target_id'> & {payload:string;dedupe_key:string};
 
@@ -34,7 +35,7 @@ async function applyDecision(db:D1Database, member:Member, row:Pick<Contribution
   const p=JSON.parse(row.payload); const now=new Date().toISOString(); const token=crypto.randomUUID();
   const guard='EXISTS(SELECT 1 FROM submissions WHERE id=? AND decision_id=?)';
   const stmts=[db.prepare("UPDATE submissions SET status=?,decided_at=?,decided_by=?,decision_id=?,reason=? WHERE id=? AND status='pending'").bind(approved?'approved':'rejected',now,member.id,token,reason,id)];
-  const author=await db.prepare('SELECT name FROM user WHERE id=?').bind(row.author_id).first<{name:string}>();
+  const author=row.author_id ? await getIdentity(db,row.author_id) : null;
   if(approved){
     if(row.kind==='review'){
       const v=reviewSchema.parse(p);
