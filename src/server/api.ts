@@ -75,6 +75,8 @@ api.post('/submissions',async c=>{
     if(input.kind==='place' && !parsed.business_types.length)throw new HTTPException(400,{message:'Choose at least one business type'});
     // Keep omitted fields omitted so old clients cannot reset newer fields on approval.
     payload=input.kind==='correction'?Object.fromEntries(Object.entries(parsed).filter(([key])=>Object.hasOwn(input.payload as object,key))):parsed;
+    const canEditShortDescription = member.role === 'admin' || !!(input.place_id && await owns(db, member.id, input.place_id));
+    if (!canEditShortDescription && payload && typeof payload === 'object') delete (payload as Record<string, unknown>).short_description;
     await assertBusinessTypes(db, parsed.business_types, input.kind === 'correction');
   }
   else if(input.kind==='owner_claim')payload=z.object({body:text(1000)}).parse(input.payload);

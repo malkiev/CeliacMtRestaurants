@@ -32,6 +32,7 @@ const fields = [
   'phone',
   'business_status',
   'description',
+  'short_description',
   'brand_name',
   'branch_name',
   'menu_options',

@@ -17,6 +17,7 @@ export const placeSchema = z
   .object({
     catalogue_enabled: z.never().optional(),
     description: optionalString(2000),
+    short_description: optionalString(280),
     brand_name: optionalString(120),
     branch_name: optionalString(120),
     business_types: z

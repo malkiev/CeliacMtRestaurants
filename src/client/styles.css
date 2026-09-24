@@ -86,6 +86,8 @@ em { font-style: normal; }
 .results-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; }
 .results-summary p { margin: 0; }
 .results-summary .text-link { min-height: 44px; }
+.place-card-description { color: var(--muted); line-height: 1.45; margin: 12px 18px 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.place-short-description { max-width: 760px; margin: -12px 0 24px; color: var(--muted); font-size: 18px; line-height: 1.6; }
 .place-art.shop { background: #dfe7d7; color: #4e6054; }
 .place-art.shop .art-circle { border-color: #b9c8b2; box-shadow: 0 7px 0 #b9c8b2; }
 @media(max-width: 600px) {

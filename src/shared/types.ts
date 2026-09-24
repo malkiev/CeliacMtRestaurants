@@ -3,7 +3,7 @@ export type BusinessType = { key: string; label: string; category: 'restaurant'|
 export type Role = 'member' | 'moderator' | 'admin';
 export type Place = {
   business_types?: string[]; services?: string[]; advance_orders?: 'unknown'|'yes'|'no'; premises?: 'unknown'|'public'|'none'; ordering_info?: string; price_applicability?: 'applicable'|'not_applicable'; catalogue_enabled?: boolean; source_type?: string;
-  id: string; slug: string; name: string; type: string; description: string; brand_name: string; branch_name: string; menu_options: string[]; locality: string; island: 'Malta' | 'Gozo'; address: string;
+  id: string; slug: string; name: string; type: string; short_description?: string; description: string; brand_name: string; branch_name: string; menu_options: string[]; locality: string; island: 'Malta' | 'Gozo'; address: string;
   latitude: number | null; longitude: number | null; coordinates_checked: number; cuisines: string[];
   price_min: number | null; price_max: number | null; price_basis: string; price_updated: string | null;
   menu_info: string; website: string; menu_url: string; social_url: string; phone: string;
