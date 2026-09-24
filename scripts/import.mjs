@@ -53,6 +53,7 @@ export function importRows(input) {
       'Butcher',
       'Food shop',
       'Food producer',
+      'Wine bar',
       'Importer/distributor',
     ];
     const importedType = type === 'Shop' ? 'Food shop' : type;

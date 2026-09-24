@@ -21,7 +21,7 @@ export const placeSchema = z
     branch_name: optionalString(120),
     business_types: z
       .array(z.string().refine((v) => PLACE_TYPES.includes(v)))
-      .max(7)
+      .max(PLACE_TYPES.length)
       .optional(),
     services: z
       .array(z.string().refine((v) => SERVICES.includes(v)))

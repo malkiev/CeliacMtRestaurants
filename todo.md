@@ -2,4 +2,3 @@
 -loading data in admin not always loads? (stringi)
 -add winebar as business type
 -remover logo
--remove banner
