@@ -86,11 +86,11 @@ export function insertPlace(
     id.slice(0, 8);
   return db
     .prepare(
-      `INSERT INTO places(id,slug,${fields.join(',')},price_updated) SELECT ${Array(
-        fields.length + 3,
+      `INSERT INTO places(id,slug,${fields.join(',')},cam_verified,price_updated) SELECT ${Array(
+        fields.length + 2,
       )
         .fill('?')
-        .join(',')} WHERE ${guard}`,
+        .join(',')},0,? WHERE ${guard}`,
     )
     .bind(
       id,

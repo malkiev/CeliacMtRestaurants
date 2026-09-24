@@ -72,7 +72,7 @@ export function filterPlaces(
     cuisine: string;
     type: string;
     price: string;
-    verified: boolean;
+    verified?: boolean;
     service?: string;
   },
 ) {
