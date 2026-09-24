@@ -11,6 +11,7 @@ import { decide, submitContribution } from './moderation';
 import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility } from './places';
 import { checkCover, coverSchema } from './covers';
 import { getIdentity, getPublicProfile, registerProfiles } from './profiles';
+import { assertBusinessTypes, listBusinessTypes, registerBusinessTypeAdmin } from './business-types';
 
 export const api=new Hono<AppEnv>();
 api.use('*',async(c,next)=>{
@@ -74,6 +75,9 @@ api.post('/submissions',async c=>{
     if(input.kind==='place' && !parsed.business_types.length)throw new HTTPException(400,{message:'Choose at least one business type'});
     // Keep omitted fields omitted so old clients cannot reset newer fields on approval.
     payload=input.kind==='correction'?Object.fromEntries(Object.entries(parsed).filter(([key])=>Object.hasOwn(input.payload as object,key))):parsed;
+    const canEditShortDescription = member.role === 'admin' || !!(input.place_id && await owns(db, member.id, input.place_id));
+    if (!canEditShortDescription && payload && typeof payload === 'object') delete (payload as Record<string, unknown>).short_description;
+    await assertBusinessTypes(db, parsed.business_types, input.kind === 'correction');
   }
   else if(input.kind==='owner_claim')payload=z.object({body:text(1000)}).parse(input.payload);
   else{
@@ -129,11 +133,12 @@ api.post('/moderation/places/:id/coordinates',async c=>{
 });
 
 api.use('/admin/*',async(c,next)=>{if(c.get('member').role!=='admin')throw new HTTPException(403,{message:'Admin access required'});await next();});
+registerBusinessTypeAdmin(api);
 api.get('/admin/data',async c=>{
-  const [users,places,links,adverts,ownerships]=await Promise.all([
+  const [users,places,links,adverts,ownerships,businessTypes]=await Promise.all([
     c.env.DB.prepare("SELECT u.id,COALESCE(p.display_name,u.name) name,u.email,COALESCE(p.role,'member') role FROM user u LEFT JOIN profiles p ON p.user_id=u.id ORDER BY u.name LIMIT 500").all(),
-    c.env.DB.prepare(`${placeSelect} ORDER BY p.name`).all(),c.env.DB.prepare('SELECT * FROM useful_links ORDER BY sort_order').all(),c.env.DB.prepare('SELECT * FROM adverts').all(),c.env.DB.prepare('SELECT * FROM ownerships').all(),
-  ]);return c.json({users:users.results,places:places.results.map(p=>({...storedPlace(p),catalogue_enabled:!!p.catalogue_enabled})),links:links.results,adverts:adverts.results,ownerships:ownerships.results});
+    c.env.DB.prepare(`${placeSelect} ORDER BY p.name`).all(),c.env.DB.prepare('SELECT * FROM useful_links ORDER BY sort_order').all(),c.env.DB.prepare('SELECT * FROM adverts').all(),c.env.DB.prepare('SELECT * FROM ownerships').all(),listBusinessTypes(c.env.DB),
+  ]);return c.json({users:users.results,places:places.results.map(p=>({...storedPlace(p),catalogue_enabled:!!p.catalogue_enabled})),links:links.results,adverts:adverts.results,ownerships:ownerships.results,business_types:businessTypes});
 });
 api.post('/admin/places',async c=>{const raw=await c.req.json();const id=z.string().min(1).optional().parse(raw.id);return c.json({id:await saveAdminPlace(c.env.DB,c.get('member'),raw.place,id)});});
 api.post('/admin/places/:id/catalogue',async c=>{

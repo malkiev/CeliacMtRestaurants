@@ -3,6 +3,7 @@ import type { Place } from './types';
 export const PLACE_TYPES = [
   'Restaurant',
   'Cafe',
+  'Bar',
   'Wine bar',
   'Bakery',
   'Butcher',
@@ -71,7 +72,7 @@ export function filterPlaces(
     cuisine: string;
     type: string;
     price: string;
-    verified: boolean;
+    verified?: boolean;
     service?: string;
   },
 ) {

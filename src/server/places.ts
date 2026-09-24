@@ -4,6 +4,7 @@ import type { Member } from '../shared/types';
 import { normaliseLocality } from '../shared/place-options';
 import { audit, owns, storedPlace } from './db';
 import { placeSchema } from './validation';
+import { assertBusinessTypes } from './business-types';
 
 type PlaceInput = z.output<typeof placeSchema>;
 const fields = [
@@ -31,6 +32,7 @@ const fields = [
   'phone',
   'business_status',
   'description',
+  'short_description',
   'brand_name',
   'branch_name',
   'menu_options',
@@ -85,11 +87,11 @@ export function insertPlace(
     id.slice(0, 8);
   return db
     .prepare(
-      `INSERT INTO places(id,slug,${fields.join(',')},price_updated) SELECT ${Array(
-        fields.length + 3,
+      `INSERT INTO places(id,slug,${fields.join(',')},cam_verified,price_updated) SELECT ${Array(
+        fields.length + 2,
       )
         .fill('?')
-        .join(',')} WHERE ${guard}`,
+        .join(',')},0,? WHERE ${guard}`,
     )
     .bind(
       id,
@@ -128,6 +130,7 @@ export async function saveAdminPlace(db: D1Database, member: Member, input: unkn
     ? await db.prepare('SELECT * FROM places WHERE id=?').bind(id).first<Record<string, unknown>>()
     : null;
   const v = parsePlaceInput(input, existing || undefined);
+  await assertBusinessTypes(db, v.business_types, !!id);
   if (!id && !v.business_types.length)
     throw new HTTPException(400, { message: 'Choose at least one business type' });
   if (id) {

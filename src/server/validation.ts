@@ -17,11 +17,12 @@ export const placeSchema = z
   .object({
     catalogue_enabled: z.never().optional(),
     description: optionalString(2000),
+    short_description: optionalString(280),
     brand_name: optionalString(120),
     branch_name: optionalString(120),
     business_types: z
-      .array(z.string().refine((v) => PLACE_TYPES.includes(v)))
-      .max(PLACE_TYPES.length)
+      .array(z.string().min(2).max(64))
+      .max(32)
       .optional(),
     services: z
       .array(z.string().refine((v) => SERVICES.includes(v)))
@@ -39,7 +40,7 @@ export const placeSchema = z
     name: text(120),
     type: z
       .string()
-      .refine((v) => [...PLACE_TYPES, 'Shop', 'By Order/Takeaway', ''].includes(v))
+      .refine((v) => [...PLACE_TYPES, 'Shop', 'By Order/Takeaway', ''].includes(v) || v.length >= 2)
       .optional(),
     locality: optionalString(80),
     island: z.enum(['Malta', 'Gozo']),

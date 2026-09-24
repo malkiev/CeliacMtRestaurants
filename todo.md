@@ -1,5 +1,7 @@
+-continue image processing
 -short description from business?
 -loading data in admin not always loads? (stringi)
--add winebar as business type (done)
--remove logo
--user pref (done)
+-add winebar as business type
+-admin doesn't need moderation
+-remover logo
+-remove banner
