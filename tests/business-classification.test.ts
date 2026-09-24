@@ -58,7 +58,7 @@ beforeEach(() => {
 });
 afterEach(() => database.sqlite.close());
 const row = (id: string) => database.sqlite.prepare('SELECT * FROM places WHERE id=?').get(id)!;
-function post(path: string, body: unknown) {
+function post(path: string, body: unknown, method = 'POST') {
   const app = new Hono().route('/api', api);
   app.onError((error, c) =>
     c.json({ error: error.message }, 'status' in error ? (Number(error.status) as 400) : 400),
@@ -66,7 +66,7 @@ function post(path: string, body: unknown) {
   return app.request(
     'http://localhost/api' + path,
     {
-      method: 'POST',
+      method,
       headers: { Origin: 'http://localhost', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     },
@@ -114,6 +114,53 @@ test('bootstrap retains inactive type categories for existing directory listings
   expect(result.business_types).toContainEqual(expect.objectContaining({
     key: 'Food producer', category: 'shop', active: 0,
   }));
+});
+
+test('food items persist, preserve legacy edits, and enforce inactive selections', async () => {
+  const id = await saveAdminPlace(database.db, admin, { ...input, gluten_free_items: ['pizza', 'pizza'] });
+  expect(row(id).gluten_free_items).toBe('["pizza"]');
+  database.sqlite.prepare("UPDATE gluten_free_items SET active=0 WHERE key='pizza'").run();
+  await saveAdminPlace(database.db, admin, { description: 'Updated notes' }, id);
+  expect(row(id).gluten_free_items).toBe('["pizza"]');
+  await expect(saveAdminPlace(database.db, admin, { ...input, name: 'New place', gluten_free_items: ['pizza'] })).rejects.toThrow('inactive');
+  await expect(saveAdminPlace(database.db, admin, { ...input, gluten_free_items: ['invalid'] })).rejects.toThrow('Unknown');
+  await saveAdminPlace(database.db, admin, { gluten_free_items: [] }, id);
+  expect(row(id).gluten_free_items).toBe('[]');
+});
+
+test('food item catalog is admin-only and supports editing and deactivation', async () => {
+  const item = { key: 'bread', label: 'Bread', sort_order: 50, active: true };
+  session.id = 'owner';
+  expect((await post('/admin/gluten-free-items', item)).status).toBe(403);
+  session.id = 'admin';
+  expect((await post('/admin/gluten-free-items', item)).status).toBe(201);
+  expect((await post('/admin/gluten-free-items', item)).status).toBe(409);
+  expect((await post('/admin/gluten-free-items/bread', { label: 'Bread rolls', sort_order: 60, active: false }, 'PATCH')).status).toBe(200);
+  expect(database.sqlite.prepare("SELECT * FROM gluten_free_items WHERE key='bread'").get()).toMatchObject({ label: 'Bread rolls', active: 0 });
+});
+
+test('community food edits await moderation and omitted fields preserve selections', async () => {
+  const id = await saveAdminPlace(database.db, admin, input);
+  session.id = 'owner';
+  const response = await post('/submissions', { kind: 'correction', place_id: id, payload: { gluten_free_items: ['pizza'] } });
+  expect(response.status).toBeLessThan(300);
+  expect(row(id).gluten_free_items).toBe('[]');
+  const pending = database.sqlite.prepare("SELECT id FROM submissions WHERE place_id=? AND status='pending'").get(id)!;
+  await decide(database.db, admin, String(pending.id), true, '');
+  expect(row(id).gluten_free_items).toBe('["pizza"]');
+  session.id = 'admin';
+  expect((await post('/submissions', { kind: 'correction', place_id: id, payload: { description: 'Updated notes' } })).status).toBeLessThan(300);
+  expect(row(id).gluten_free_items).toBe('["pizza"]');
+});
+
+test('search matches assigned food labels and combines item and locality filters', async () => {
+  const id = await saveAdminPlace(database.db, admin, { ...input, gluten_free_items: ['pizza'], locality: 'Valletta' });
+  const place = publicPlace(row(id));
+  const catalog = [{ key: 'pizza', label: 'Pizza', active: 0, sort_order: 1 }];
+  expect(filterPlaces([place], { ...filters, q: 'PIZZA' }, catalog)).toHaveLength(1);
+  expect(filterPlaces([place], { ...filters, item: 'pizza', locality: 'Valletta' }, catalog)).toHaveLength(1);
+  expect(filterPlaces([place], { ...filters, item: 'pasta' }, catalog)).toHaveLength(0);
+  expect(filterPlaces([place], { ...filters, q: 'pizza', locality: 'Mosta' }, catalog)).toHaveLength(0);
 });
 
 test('no public premises omit private location from detail and directory bootstrap', async () => {

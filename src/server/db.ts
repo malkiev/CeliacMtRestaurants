@@ -3,6 +3,7 @@ import type { Bindings } from './env';
 import { isLocal } from './env';
 import { normaliseLocality } from '../shared/place-options';
 import { getIdentity, getPublicProfile } from './profiles';
+import { listGlutenFreeItems } from './gluten-free-items';
 import { listBusinessTypes } from './business-types';
 
 export const placeSelect = `SELECT p.*, (SELECT AVG(rating) FROM feedback f WHERE f.place_id=p.id AND f.visible=1 AND f.kind='review') rating, (SELECT COUNT(*) FROM feedback f WHERE f.place_id=p.id AND f.visible=1 AND f.kind='review') review_count, COALESCE((SELECT ph.id FROM place_covers pc JOIN photos ph ON ph.id=pc.photo_id WHERE pc.place_id=p.id AND ph.place_id=p.id AND ph.status='approved'), (SELECT id FROM photos ph WHERE ph.place_id=p.id AND ph.status='approved' ORDER BY created_at,id LIMIT 1)) photo FROM places p`;
@@ -10,6 +11,7 @@ export function storedPlace(row: Record<string, unknown>): Place {
   return {
     ...row,
     locality: normaliseLocality(String(row.locality || ''), row.island as 'Malta' | 'Gozo'),
+    gluten_free_items: JSON.parse(String(row.gluten_free_items || '[]')),
     cuisines: JSON.parse(String(row.cuisines || '[]')),
     menu_options: JSON.parse(String(row.menu_options || '["unknown"]')),
     business_types: JSON.parse(String(row.business_types || '[]')),
@@ -115,6 +117,7 @@ export async function bootstrap(env: Bindings, url: string): Promise<Bootstrap> 
       ? await getPublicProfile(env.DB, decodeURIComponent(path.slice(7)))
       : null,
     business_types: await listBusinessTypes(env.DB),
+    gluten_free_item_catalog: await listGlutenFreeItems(env.DB),
     places: places.results.map(publicPlace),
     links: links.results,
     adverts: adverts.results,

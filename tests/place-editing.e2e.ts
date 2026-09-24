@@ -1,5 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
-import type { BusinessType } from '../src/shared/types';
+import type { BusinessType, GlutenFreeItem } from '../src/shared/types';
+
+const foodItems: GlutenFreeItem[] = [
+  { key: 'pizza', label: 'Pizza', sort_order: 1, active: 1 },
+  { key: 'pasta', label: 'Pasta', sort_order: 2, active: 0 },
+];
 
 function fixture() {
   return {
@@ -58,6 +63,7 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
         json: {
           places: [place],
           business_types: businessTypes,
+          gluten_free_item_catalog: foodItems,
           links: [],
           adverts: [],
           detail: {
@@ -88,7 +94,7 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
       });
     if (path === '/api/admin/data')
       return route.fulfill({
-        json: { places: [place], users: [], links: [], adverts: [], ownerships: [], business_types: businessTypes },
+        json: { places: [place], users: [], links: [], adverts: [], ownerships: [], business_types: businessTypes, gluten_free_item_catalog: foodItems },
       });
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON();
@@ -265,6 +271,52 @@ test('admin type edits use PATCH without sending the stable key', async ({ page 
   await form.getByLabel('Label', { exact: true }).fill('Coffee shop');
   await form.getByRole('button', { name: 'Save type' }).click();
   await expect.poll(() => saved).toEqual({ label: 'Coffee shop', category: 'restaurant', sort_order: 1, active: false });
+});
+
+test('admins edit food labels and deactivate choices using the catalog panel', async ({ page }) => {
+  await setup(page);
+  let saved: Record<string, unknown> | undefined;
+  await page.route('**/api/admin/gluten-free-items/pizza', async route => {
+    expect(route.request().method()).toBe('PATCH');
+    saved = route.request().postDataJSON();
+    await route.fulfill({ json: { key: 'pizza', ...saved } });
+  });
+  await page.goto('/admin');
+  await page.getByRole('button', { name: 'food items', exact: true }).click();
+  await page.locator('summary').filter({ hasText: /^Pizza$/ }).click();
+  const form = page.locator('details').filter({ has: page.locator('summary', { hasText: /^Pizza$/ }) });
+  await form.getByLabel('Label', { exact: true }).fill('Pizza bases');
+  await form.getByRole('checkbox').uncheck();
+  await form.getByRole('button', { name: 'Save food item' }).click();
+  await expect.poll(() => saved).toEqual({ label: 'Pizza bases', sort_order: 1, active: false });
+});
+
+test('food items appear in forms, detail, search and persistent filters', async ({ page }, testInfo) => {
+  await setup(page, true, { gluten_free_items: ['pizza', 'pasta'] });
+  await page.goto('/suggest');
+  await expect(page.getByRole('checkbox', { name: 'Pizza', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Pasta', exact: true })).toHaveCount(0);
+  await page.goto('/places/place');
+  await expect(page.getByRole('heading', { name: 'Gluten-free items available' })).toBeVisible();
+  await expect(page.getByText('Pizza', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit place details' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Pasta', exact: true })).toBeChecked();
+  for (const width of [1280, 375]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/restaurants');
+    await page.getByRole('textbox', { name: 'Search places' }).fill('pizza');
+    await expect(page.locator('.place-card')).toHaveCount(1);
+    await page.getByRole('button', { name: 'More filters' }).click();
+    await page.getByRole('combobox', { name: 'Gluten-free item', exact: true }).selectOption('pizza');
+    await page.reload();
+    await expect(page.locator('.place-card')).toHaveCount(1);
+    await page.locator('.view-toggle').getByRole('link', { name: 'Map', exact: true }).click();
+    await expect(page).toHaveURL(/item=pizza/);
+    await page.locator('.view-toggle').getByRole('link', { name: 'List', exact: true }).click();
+    await expect(page.locator('.place-card')).toHaveCount(1);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`food-items-${width}.png`), fullPage: true });
+  }
 });
 
 test('compact directory introduction keeps search visible on desktop and mobile', async ({

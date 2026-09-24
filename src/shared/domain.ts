@@ -1,4 +1,4 @@
-import type { Place } from './types';
+import type { GlutenFreeItem, Place } from './types';
 
 export const PLACE_TYPES = [
   'Restaurant',
@@ -74,18 +74,21 @@ export function filterPlaces(
     price: string;
     verified?: boolean;
     service?: string;
+    item?: string;
   },
+  itemCatalog: GlutenFreeItem[] = [],
 ) {
   return places.filter(
     (p) =>
       (!filters.q ||
         normalise(
-          `${p.name} ${p.brand_name || ''} ${p.branch_name || ''} ${p.locality} ${p.cuisines.join(' ')}`,
+          `${p.name} ${p.brand_name || ''} ${p.branch_name || ''} ${p.locality} ${p.cuisines.join(' ')} ${(p.gluten_free_items || []).map(key => itemCatalog.find(item => item.key === key)?.label || key.replaceAll('_', ' ')).join(' ')}`,
         ).includes(normalise(filters.q))) &&
       (!filters.island || p.island === filters.island) &&
       (!filters.locality || p.locality === filters.locality) &&
       (!filters.cuisine || p.cuisines.includes(filters.cuisine)) &&
       (!filters.type || businessTypes(p).includes(filters.type)) &&
+      (!filters.item || (p.gluten_free_items || []).includes(filters.item)) &&
       (!filters.service || (p.services || []).includes(filters.service)) &&
       (!filters.price ||
         (p.price_applicability !== 'not_applicable' &&

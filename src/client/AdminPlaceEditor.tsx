@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { BusinessType, Member, Place } from '../shared/types';
+import type { BusinessType, GlutenFreeItem, Member, Place } from '../shared/types';
 import { request } from './api';
 import { FormStatus, Notice, SubmitButton, useAction } from './components';
 import { PlaceForm } from './PlaceForm';
@@ -9,11 +9,13 @@ export function AdminPlaceEditor({
   member,
   reload,
   businessTypes,
+  glutenFreeItems,
 }: {
   place: Place;
   member: Member;
   reload: () => Promise<void>;
   businessTypes?: BusinessType[];
+  glutenFreeItems?: GlutenFreeItem[];
 }) {
   const a = useAction();
   const initialVerification = place.cam_verified_at
@@ -48,6 +50,7 @@ export function AdminPlaceEditor({
         member={member}
         place={place}
         businessTypes={businessTypes}
+        glutenFreeItems={glutenFreeItems}
         onSave={
           representsPlace
             ? undefined

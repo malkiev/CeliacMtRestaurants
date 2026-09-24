@@ -16,6 +16,10 @@ Before the first deployment, add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_
 
 On Windows, double-click [launch.cmd](launch.cmd) to prepare and launch the local website in your default browser. It uses the workspace's portable Node installation when available, installs dependencies if missing, builds the client, and runs local setup (pending migrations and seed import). Existing records and local settings are preserved. Keep the terminal window open while using the site; press Ctrl+C to stop it. The first run needs internet access if dependencies are missing. If startup fails, the window stays open to show the error.
 
+Gluten-free food items are managed under **Admin → food items**. Places can record burgers, pizza, chicken nuggets and pasta initially; admins can add, rename, reorder or deactivate choices. Assigned items appear on place pages and match the directory search bar. Restaurants and Map also offer an item filter. Community changes use the existing moderation workflow.
+
+Migration `0010_gluten_free_items.sql` creates the item catalog and an empty item selection for existing places. Apply migrations before running the updated application; the production workflow does this before deployment. No food availability is inferred from existing text.
+
 Use Node.js 22.12 or newer and npm. Install the versions in the committed lockfile:
 
 On this Windows workspace, an existing portable Node installation can be added to the current PowerShell session if Node is absent from PATH:
