@@ -107,6 +107,25 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
   return submitted;
 }
 
+test('photo form rejects more than five files before uploading', async ({ page }) => {
+  const submitted = await setup(page);
+  await page.goto('/places/place');
+  await page.getByRole('button', { name: 'Add photos' }).click();
+  await page
+    .locator('input[name="photos"]')
+    .setInputFiles(
+      Array.from({ length: 6 }, (_, i) => ({
+        name: `${i}.jpg`,
+        mimeType: 'image/jpeg',
+        buffer: Buffer.from('photo'),
+      })),
+    );
+  await page.getByLabel('Caption', { exact: true }).fill('Example photo');
+  await page.getByRole('button', { name: 'Send for approval' }).click();
+  await expect(page.getByText('Choose between one and five photos.')).toBeVisible();
+  expect(submitted).toHaveLength(0);
+});
+
 test('admin loads imported CAM choice and saved decisions, and edits all place fields', async ({
   page,
 }) => {

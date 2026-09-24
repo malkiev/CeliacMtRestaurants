@@ -81,6 +81,10 @@ Remaining pilot validation includes real Google/email account linking and delive
 
 ## Place cover photos
 
+Photo uploads accept JPEG, PNG, or WebP originals up to 10 MB (10 × 1024 × 1024 bytes). Before uploading, the browser removes metadata and converts to JPEG with a longest side of at most 1,280 px and a maximum size of 800 KB (800,000 bytes). It reduces quality, then dimensions when necessary, stopping at a 400 px longest side; smaller originals are never enlarged. If processing cannot meet the limit, the form explains the problem.
+
+Only processed JPEGs are uploaded. The Worker independently checks format, byte size and decoded dimensions, re-encodes the photo, and stores it with a thumbnail of at most 400 px in R2. Original source files are never stored. The form accepts up to five photos per submission; the server allows up to 20 photos per user per rolling 24 hours. Browser conversion and server validation need no Cloudflare Images subscription.
+
 Verified owners can open their place and choose an approved gallery image under **Choose your place’s cover photo**. An independent moderator reviews the nomination; the previous cover remains public until approval. The chosen photo appears on both the directory card and place banner. Hidden or deleted photos fall back to another approved image. Owner access and photo eligibility are checked again when approving.
 
 Migration `0003_place_covers.sql` adds the cover selection table. Apply it locally with `npm.cmd run db:migrate` (already applied in this workspace), and apply pending migrations to production before deploying. Existing accounts and photos are preserved. No additional hosting service is needed.

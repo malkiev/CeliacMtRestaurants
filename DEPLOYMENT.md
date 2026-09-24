@@ -51,6 +51,8 @@ In Cloudflare, choose **Domains → Onboard a domain**, enter the apex domain, r
 
 ### 3. Create the R2 photo bucket
 
+Photo storage uses browser conversion and Worker validation; no Cloudflare Images subscription is required. JPEG, PNG, and WebP originals up to 10 MB (10 × 1024 × 1024 bytes) are converted in the browser to JPEG, at most 1,280 px on the longest side and 800 KB (800,000 bytes). Quality and dimensions are reduced as needed before upload. Source originals never reach R2: only server-re-encoded JPEGs and their 400 px thumbnails are stored. The 800 KB cap applies to the processed upload before server re-encoding. Keep the existing limits of five photos per form submission and 20 per user per rolling 24 hours when estimating storage growth. Database insertion failures remove both R2 objects.
+
 Enable R2 billing if requested, then create the private production bucket:
 
 ```powershell
