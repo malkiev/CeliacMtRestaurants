@@ -228,15 +228,19 @@ test('compact directory introduction keeps search visible on desktop and mobile'
   page,
 }, testInfo) => {
   await setup(page);
-  for (const path of ['/', '/map']) {
+  for (const [path, heading] of [
+    ['/', 'Gluten-free restaurants and places to eat in Malta & Gozo'],
+    ['/restaurants', 'Gluten-free restaurants and places to eat in Malta & Gozo'],
+    ['/map', 'Gluten-free places in Malta & Gozo'],
+  ]) {
     for (const width of [1280, 768, 375, 320]) {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(path);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        'Gluten-free places in Malta & Gozo',
+        heading,
       );
       await expect(page.locator('.directory-intro p')).toHaveText(
-        'Find places that cater for coeliacs to eat, shop, and order gluten-free food, with experiences shared by the coeliac community.',
+        'Find safe places for celiacs to eat, shop, and order gluten free food, with experiences shared by the coeliac community.',
       );
       await expect(page.locator('.welcome-panel, .hero-scene, .community-strip')).toHaveCount(0);
       await expect(page.getByRole('link', { name: 'Find your next favourite' })).toHaveCount(0);
@@ -251,7 +255,7 @@ test('compact directory introduction keeps search visible on desktop and mobile'
         .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
         .toBe(true);
       await page.screenshot({
-        path: testInfo.outputPath(`${path === '/map' ? 'map' : 'home'}-${width}.png`),
+        path: testInfo.outputPath(`${path === '/' ? 'home' : path.slice(1)}-${width}.png`),
         fullPage: true,
       });
       await search.fill('No matching business');
