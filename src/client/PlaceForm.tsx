@@ -72,7 +72,7 @@ export function PlaceForm({ member, place, initial, onDone, onSave, businessType
       premises,
       ordering_info: str('ordering_info'),
       description: str('description'),
-      ...(owner || member.role === 'admin' ? { short_description: str('short_description') } : {}),
+      ...(owner || member?.role === 'admin' ? { short_description: str('short_description') } : {}),
       brand_name: str('brand_name'),
       branch_name: str('branch_name'),
       locality,
@@ -334,8 +334,8 @@ export function PlaceForm({ member, place, initial, onDone, onSave, businessType
         <div className="stack-form">
           <label>
             Short description
-            <textarea name="short_description" rows={2} maxLength={280} placeholder="A concise introduction to this place" defaultValue={source?.short_description} readOnly={!(owner || member.role === 'admin')} />
-            {!(owner || member.role === 'admin') && <span className="small muted">Only verified owners and admins can edit this description.</span>}
+            <textarea name="short_description" rows={2} maxLength={280} placeholder="A concise introduction to this place" defaultValue={source?.short_description} readOnly={!(owner || member?.role === 'admin')} />
+            {!(owner || member?.role === 'admin') && <span className="small muted">Only verified owners and admins can edit this description.</span>}
           </label>
           <label>
             About this place
