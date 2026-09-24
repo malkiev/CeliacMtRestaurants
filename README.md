@@ -81,6 +81,8 @@ Remaining pilot validation includes real Google/email account linking and delive
 
 ## Place cover photos
 
+Admin contributions (photos, reviews, replies, new places, corrections, cover choices, and reports) take effect immediately and retain decision/audit history. Other contributors still require moderation. Ownership claims require an independent admin; owner-review restrictions and admin-only CAM controls still apply. This changes application behavior only and requires no migration or additional hosting services.
+
 Photo uploads accept JPEG, PNG, or WebP originals up to 10 MB (10 × 1024 × 1024 bytes). Before uploading, the browser removes metadata and converts to JPEG with a longest side of at most 1,280 px and a maximum size of 800 KB (800,000 bytes). It reduces quality, then dimensions when necessary, stopping at a 400 px longest side; smaller originals are never enlarged. If processing cannot meet the limit, the form explains the problem.
 
 Only processed JPEGs are uploaded. The Worker independently checks format, byte size and decoded dimensions, re-encodes the photo, and stores it with a thumbnail of at most 400 px in R2. Original source files are never stored. The form accepts up to five photos per submission; the server allows up to 20 photos per user per rolling 24 hours. Browser conversion and server validation need no Cloudflare Images subscription.

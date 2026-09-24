@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { Hono } from 'hono';
 import type { AppEnv, Bindings } from './env';
 import { createAuth } from './auth';
+import { submitContribution } from './moderation';
 
 export function registerPhotos(api:Hono<AppEnv>){
   api.post('/photos',async c=>{
@@ -22,11 +23,11 @@ export function registerPhotos(api:Hono<AppEnv>){
     const thumbnail=jpeg.encode({width:w,height:h,data:pixels},70).data;
     const id=crypto.randomUUID();const key=`uploads/${Date.now()}-${id}.jpg`;const thumb=`uploads/${Date.now()}-${id}-thumb.jpg`;
     await c.env.PHOTOS.put(key,clean,{httpMetadata:{contentType:'image/jpeg'}});await c.env.PHOTOS.put(thumb,thumbnail,{httpMetadata:{contentType:'image/jpeg'}});
-    try{await c.env.DB.batch([
+    let status:'pending'|'approved';
+    try{status=await submitContribution(c.env.DB,m,{id:crypto.randomUUID(),kind:'photo',author_id:m.id,place_id:placeId,target_id:id,payload:JSON.stringify({caption}),dedupe_key:`photo:${id}`},[
       c.env.DB.prepare('INSERT INTO photos(id,place_id,author_id,object_key,thumb_key,caption) VALUES(?,?,?,?,?,?)').bind(id,placeId,m.id,key,thumb,caption),
-      c.env.DB.prepare("INSERT INTO submissions(id,kind,author_id,place_id,target_id,payload,dedupe_key) VALUES(?,'photo',?,?,?,?,?)").bind(crypto.randomUUID(),m.id,placeId,id,JSON.stringify({caption}),`photo:${id}`),
     ]);}catch(e){await c.env.PHOTOS.delete([key,thumb]);throw e;}
-    return c.json({id,status:'pending'},201);
+    return c.json({id,status},201);
   });
 }
 export async function photoResponse(env:Bindings,req:Request,id:string){

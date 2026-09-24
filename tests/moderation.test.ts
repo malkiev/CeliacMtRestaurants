@@ -83,6 +83,15 @@ test('completed decisions cannot be overwritten or audited twice', async () => {
   });
   expect(database.sqlite.prepare('SELECT * FROM audit_log').all()).toHaveLength(1);
 });
+
+test('admins can publish their own previously pending changes', async () => {
+  submit();
+  await decide(database.db, { ...moderator, id: 'author', role: 'admin' }, 'submission', true, '');
+  expect(
+    database.sqlite.prepare("SELECT status FROM submissions WHERE id='submission'").get()?.status,
+  ).toBe('approved');
+  expect(database.sqlite.prepare('SELECT rating FROM feedback').get()?.rating).toBe(4);
+});
 test('owner verification requires an admin', async () => {
   submit('claim', 'owner_claim');
   await expect(decide(database.db, moderator, 'claim', true, '')).rejects.toMatchObject({

@@ -7,9 +7,11 @@ import { testDatabase } from './sqlite';
 
 let database: ReturnType<typeof testDatabase>;
 let app: Hono<AppEnv>;
+let role: 'member' | 'moderator' | 'admin';
 const put = vi.fn();
 const remove = vi.fn();
 beforeEach(() => {
+  role = 'member';
   vi.clearAllMocks();
   database = testDatabase();
   database.sqlite.exec(
@@ -21,7 +23,7 @@ beforeEach(() => {
       id: 'user',
       name: 'User',
       email: 'user@example.test',
-      role: 'member',
+      role,
       ownerships: [],
     });
     await next();
@@ -78,6 +80,40 @@ test('stores a clean JPEG and 400px thumbnail and queues moderation', async () =
   expect(put.mock.calls[0][2]).toEqual({ httpMetadata: { contentType: 'image/jpeg' } });
   expect(database.sqlite.prepare('SELECT status FROM photos').get()?.status).toBe('pending');
   expect(database.sqlite.prepare('SELECT kind FROM submissions').get()?.kind).toBe('photo');
+});
+
+test('admin photos publish immediately with an audit record', async () => {
+  role = 'admin';
+  const response = await upload();
+  expect(response.status).toBe(201);
+  expect(await response.json()).toMatchObject({ status: 'approved' });
+  expect(database.sqlite.prepare('SELECT status FROM photos').get()?.status).toBe('approved');
+  expect(database.sqlite.prepare('SELECT status,decided_by FROM submissions').get()).toMatchObject({
+    status: 'approved',
+    decided_by: 'user',
+  });
+  expect(database.sqlite.prepare('SELECT actor_id,action FROM audit_log').get()).toMatchObject({
+    actor_id: 'user',
+    action: 'approve',
+  });
+});
+
+test('moderator photos still require approval', async () => {
+  role = 'moderator';
+  expect(await (await upload()).json()).toMatchObject({ status: 'pending' });
+  expect(database.sqlite.prepare('SELECT status FROM photos').get()?.status).toBe('pending');
+});
+
+test('admin publication failure rolls back all rows and removes stored photos', async () => {
+  role = 'admin';
+  database.sqlite.exec(
+    "CREATE TRIGGER fail_audit BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'test failure'); END;",
+  );
+  app.onError((_error, c) => c.text('Failed', 500));
+  expect((await upload()).status).toBe(500);
+  expect(remove).toHaveBeenCalledWith(put.mock.calls.map((call) => call[0]));
+  for (const table of ['photos', 'submissions', 'audit_log'])
+    expect(database.sqlite.prepare(`SELECT * FROM ${table}`).all()).toHaveLength(0);
 });
 
 test('removes both R2 objects when the database insertion fails', async () => {

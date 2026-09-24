@@ -5,14 +5,32 @@ import { checkDuplicate, insertPlace, updatePlace, parsePlaceInput } from './pla
 import { checkCover, coverSchema } from './covers';
 import { placeSchema, reviewSchema, replySchema } from './validation';
 
+type Contribution = Pick<Submission, 'id'|'kind'|'author_id'|'place_id'|'target_id'> & {payload:string;dedupe_key:string};
+
+export async function submitContribution(db:D1Database, member:Member, row:Contribution, before:D1PreparedStatement[] = []) {
+  const statements=[...before,db.prepare('INSERT INTO submissions(id,kind,author_id,place_id,target_id,payload,dedupe_key) VALUES(?,?,?,?,?,?,?)').bind(row.id,row.kind,row.author_id,row.place_id,row.target_id,row.payload,row.dedupe_key)];
+  if(member.role==='admin' && row.kind!=='owner_claim' && row.author_id===member.id){
+    await applyDecision(db,member,row,true,'Published directly by admin',statements);
+    return 'approved' as const;
+  }
+  await db.batch(statements);
+  return 'pending' as const;
+}
+
 export async function decide(db:D1Database, member:Member, id:string, approved:boolean, reason:string) {
   const row=await db.prepare('SELECT * FROM submissions WHERE id=?').bind(id).first<Omit<Submission,'payload'>&{payload:string}>();
   if(!row) throw new HTTPException(404,{message:'Submission not found'});
   if(row.status!=='pending') throw new HTTPException(409,{message:'Another moderator has already handled this submission'});
-  if(member.role==='member' || row.author_id===member.id || (row.place_id && await owns(db,member.id,row.place_id))) throw new HTTPException(403,{message:'An independent moderator must handle this submission'});
+  const ownAdminChange=member.role==='admin' && row.author_id===member.id && row.kind!=='owner_claim';
+  if(member.role==='member' || (!ownAdminChange && (row.author_id===member.id || (row.place_id && await owns(db,member.id,row.place_id))))) throw new HTTPException(403,{message:'An independent moderator must handle this submission'});
   if(row.kind==='owner_claim' && member.role!=='admin') throw new HTTPException(403,{message:'An admin must verify restaurant owners'});
   if(!approved && reason.trim().length<3) throw new HTTPException(400,{message:'Give a short reason so the contributor knows what to change'});
   if(approved && !row.author_id) throw new HTTPException(409,{message:'The contributor has deleted their account'});
+  await applyDecision(db,member,row,approved,reason);
+}
+
+async function applyDecision(db:D1Database, member:Member, row:Pick<Contribution,'id'|'kind'|'author_id'|'place_id'|'target_id'|'payload'>, approved:boolean, reason:string, before:D1PreparedStatement[] = []) {
+  const id=row.id;
   const p=JSON.parse(row.payload); const now=new Date().toISOString(); const token=crypto.randomUUID();
   const guard='EXISTS(SELECT 1 FROM submissions WHERE id=? AND decision_id=?)';
   const stmts=[db.prepare("UPDATE submissions SET status=?,decided_at=?,decided_by=?,decision_id=?,reason=? WHERE id=? AND status='pending'").bind(approved?'approved':'rejected',now,member.id,token,reason,id)];
@@ -50,6 +68,6 @@ export async function decide(db:D1Database, member:Member, id:string, approved:b
   }
   if(row.kind==='photo')stmts.push(db.prepare(`UPDATE photos SET status=? WHERE id=? AND ${guard}`).bind(approved?'approved':'rejected',row.target_id,id,token));
   stmts.push(db.prepare(`INSERT INTO audit_log(id,actor_id,action,target_id,detail) SELECT ?,?,?,?,? WHERE ${guard}`).bind(crypto.randomUUID(),member.id,approved?'approve':'reject',id,reason,id,token));
-  const results=await db.batch(stmts);
-  if(!results[0].meta.changes)throw new HTTPException(409,{message:'Another moderator has already handled this submission'});
+  const results=await db.batch([...before,...stmts]);
+  if(!results[before.length].meta.changes)throw new HTTPException(409,{message:'Another moderator has already handled this submission'});
 }

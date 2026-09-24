@@ -108,23 +108,68 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
 }
 
 test('photo form rejects more than five files before uploading', async ({ page }) => {
-  const submitted = await setup(page);
+  const submitted = await setup(page, true);
   await page.goto('/places/place');
   await page.getByRole('button', { name: 'Add photos' }).click();
-  await page
-    .locator('input[name="photos"]')
-    .setInputFiles(
-      Array.from({ length: 6 }, (_, i) => ({
-        name: `${i}.jpg`,
-        mimeType: 'image/jpeg',
-        buffer: Buffer.from('photo'),
-      })),
-    );
+  await page.locator('input[name="photos"]').setInputFiles(
+    Array.from({ length: 6 }, (_, i) => ({
+      name: `${i}.jpg`,
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('photo'),
+    })),
+  );
   await page.getByLabel('Caption', { exact: true }).fill('Example photo');
   await page.getByRole('button', { name: 'Send for approval' }).click();
   await expect(page.getByText('Choose between one and five photos.')).toBeVisible();
   expect(submitted).toHaveLength(0);
 });
+
+for (const admin of [true, false]) {
+  test(`${admin ? 'admin' : 'member'} photo form shows the correct publication result`, async ({
+    page,
+  }, testInfo) => {
+    await setup(page, !admin);
+    let uploads = 0;
+    await page.route('**/api/photos', async (route) => {
+      uploads++;
+      expect(route.request().headers()['content-type']).toContain('multipart/form-data');
+      await route.fulfill({
+        status: 201,
+        json: { id: 'photo', status: admin ? 'approved' : 'pending' },
+      });
+    });
+    await page.setViewportSize({ width: 375, height: 850 });
+    await page.goto('/places/place');
+    await page.getByRole('button', { name: 'Add photos' }).click();
+    const data = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 20;
+      canvas.height = 20;
+      return canvas.toDataURL('image/png').split(',')[1];
+    });
+    await page
+      .locator('input[name="photos"]')
+      .setInputFiles({
+        name: 'photo.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(data, 'base64'),
+      });
+    await page.getByLabel('Caption', { exact: true }).fill('Example photo');
+    await page
+      .getByRole('button', { name: admin ? 'Save changes' : 'Send for approval', exact: true })
+      .click();
+    await expect(
+      page.getByText(admin ? 'Your photos are published.' : 'Your photos are awaiting approval.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(uploads).toBe(1);
+    await page.screenshot({
+      path: testInfo.outputPath('photo-publication-mobile.png'),
+      fullPage: true,
+    });
+  });
+}
 
 test('admin loads imported CAM choice and saved decisions, and edits all place fields', async ({
   page,
