@@ -1,5 +1,6 @@
 import { HTTPException } from 'hono/http-exception';
 import type { Member, Submission } from '../shared/types';
+import { assertGlutenFreeItems } from './gluten-free-items';
 import { owns } from './db';
 import { checkDuplicate, insertPlace, updatePlace, parsePlaceInput } from './places';
 import { checkCover, coverSchema } from './covers';
@@ -48,6 +49,7 @@ async function applyDecision(db:D1Database, member:Member, row:Pick<Contribution
       stmts.push(db.prepare(`INSERT INTO replies(id,feedback_id,place_id,author_id,author_name,body,created_at,updated_at) SELECT ?,?,?,?,?,?,?,? WHERE ${guard} ON CONFLICT(feedback_id) DO UPDATE SET body=excluded.body,author_id=excluded.author_id,author_name=excluded.author_name,updated_at=excluded.updated_at,visible=1`).bind(crypto.randomUUID(),row.target_id,row.place_id,row.author_id,author?.name||'Restaurant representative',v.body,now,now,id,token));
     } else if(row.kind==='place'){
       const v=placeSchema.parse(p);const placeId=crypto.randomUUID();
+      await assertGlutenFreeItems(db,v.gluten_free_items);
       await checkDuplicate(db,v);
       stmts.push(insertPlace(db,placeId,v,guard,[id,token]));
     } else if(row.kind==='correction' && 'cover_photo_id' in p){
@@ -58,6 +60,7 @@ async function applyDecision(db:D1Database, member:Member, row:Pick<Contribution
       const existing=await db.prepare('SELECT * FROM places WHERE id=?').bind(row.place_id).first<Record<string,unknown>>();
       if(!existing)throw new HTTPException(404,{message:'Place not found'});
       const v=parsePlaceInput(p,existing);
+      await assertGlutenFreeItems(db,v.gluten_free_items,existing);
       await checkDuplicate(db,v,row.place_id!);
       stmts.push(updatePlace(db,row.place_id!,v,guard,[id,token]));
     } else if(row.kind==='owner_claim'){

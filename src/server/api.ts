@@ -11,6 +11,7 @@ import { decide, submitContribution } from './moderation';
 import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility } from './places';
 import { checkCover, coverSchema } from './covers';
 import { getIdentity, getPublicProfile, registerProfiles } from './profiles';
+import { assertGlutenFreeItems, listGlutenFreeItems, registerGlutenFreeItemAdmin } from './gluten-free-items';
 import { assertBusinessTypes, listBusinessTypes, registerBusinessTypeAdmin } from './business-types';
 
 export const api=new Hono<AppEnv>();
@@ -78,6 +79,7 @@ api.post('/submissions',async c=>{
     const canEditShortDescription = member.role === 'admin' || !!(input.place_id && await owns(db, member.id, input.place_id));
     if (!canEditShortDescription && payload && typeof payload === 'object') delete (payload as Record<string, unknown>).short_description;
     await assertBusinessTypes(db, parsed.business_types, input.kind === 'correction');
+    await assertGlutenFreeItems(db, parsed.gluten_free_items, existing || undefined);
   }
   else if(input.kind==='owner_claim')payload=z.object({body:text(1000)}).parse(input.payload);
   else{
@@ -134,11 +136,12 @@ api.post('/moderation/places/:id/coordinates',async c=>{
 
 api.use('/admin/*',async(c,next)=>{if(c.get('member').role!=='admin')throw new HTTPException(403,{message:'Admin access required'});await next();});
 registerBusinessTypeAdmin(api);
+registerGlutenFreeItemAdmin(api);
 api.get('/admin/data',async c=>{
-  const [users,places,links,adverts,ownerships,businessTypes]=await Promise.all([
+  const [users,places,links,adverts,ownerships,businessTypes,glutenFreeItems]=await Promise.all([
     c.env.DB.prepare("SELECT u.id,COALESCE(p.display_name,u.name) name,u.email,COALESCE(p.role,'member') role FROM user u LEFT JOIN profiles p ON p.user_id=u.id ORDER BY u.name LIMIT 500").all(),
-    c.env.DB.prepare(`${placeSelect} ORDER BY p.name`).all(),c.env.DB.prepare('SELECT * FROM useful_links ORDER BY sort_order').all(),c.env.DB.prepare('SELECT * FROM adverts').all(),c.env.DB.prepare('SELECT * FROM ownerships').all(),listBusinessTypes(c.env.DB),
-  ]);return c.json({users:users.results,places:places.results.map(p=>({...storedPlace(p),catalogue_enabled:!!p.catalogue_enabled})),links:links.results,adverts:adverts.results,ownerships:ownerships.results,business_types:businessTypes});
+    c.env.DB.prepare(`${placeSelect} ORDER BY p.name`).all(),c.env.DB.prepare('SELECT * FROM useful_links ORDER BY sort_order').all(),c.env.DB.prepare('SELECT * FROM adverts').all(),c.env.DB.prepare('SELECT * FROM ownerships').all(),listBusinessTypes(c.env.DB),listGlutenFreeItems(c.env.DB),
+  ]);return c.json({users:users.results,places:places.results.map(p=>({...storedPlace(p),catalogue_enabled:!!p.catalogue_enabled})),links:links.results,adverts:adverts.results,ownerships:ownerships.results,business_types:businessTypes,gluten_free_item_catalog:glutenFreeItems});
 });
 api.post('/admin/places',async c=>{const raw=await c.req.json();const id=z.string().min(1).optional().parse(raw.id);return c.json({id:await saveAdminPlace(c.env.DB,c.get('member'),raw.place,id)});});
 api.post('/admin/places/:id/catalogue',async c=>{

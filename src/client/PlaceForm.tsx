@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import type { BusinessType, Member, Place } from '../shared/types';
+import type { BusinessType, GlutenFreeItem, Member, Place } from '../shared/types';
 import { CUISINES, PLACE_TYPES, SERVICES, businessTypes as getBusinessTypes } from '../shared/domain';
 import {
   LOCALITIES,
@@ -17,15 +17,17 @@ type Props = {
   onDone?: () => void;
   onSave?: (payload: Record<string, unknown>) => Promise<void>;
   businessTypes?: BusinessType[];
+  glutenFreeItems?: GlutenFreeItem[];
 };
 
-export function PlaceForm({ member, place, initial, onDone, onSave, businessTypes }: Props) {
+export function PlaceForm({ member, place, initial, onDone, onSave, businessTypes, glutenFreeItems }: Props) {
   const source = place || initial;
   const a = useAction();
   const [island, setIsland] = useState<'Malta' | 'Gozo'>(source?.island || 'Malta');
   const [locality, setLocality] = useState(normaliseLocality(source?.locality || '', island));
   const [types, setTypes] = useState<string[]>(source ? getBusinessTypes(source) : []);
   const [services, setServices] = useState<string[]>(source?.services || []);
+  const [items, setItems] = useState<string[]>(source?.gluten_free_items || []);
   const [cuisines, setCuisines] = useState<string[]>(source?.cuisines || []);
   const [menuOptions, setMenuOptions] = useState<string[]>(source?.menu_options || ['unknown']);
   const [premises, setPremises] = useState(source?.premises || 'unknown');
@@ -81,6 +83,7 @@ export function PlaceForm({ member, place, initial, onDone, onSave, businessType
         ? {}
         : { address: str('address'), latitude: num('latitude'), longitude: num('longitude') }),
       cuisines,
+      ...(glutenFreeItems ? { gluten_free_items: items } : {}),
       menu_options: menuOptions,
       price_applicability: pricing,
       price_min: minimum === '' ? null : Number(minimum),
@@ -179,6 +182,7 @@ export function PlaceForm({ member, place, initial, onDone, onSave, businessType
           </select>
         </label>
       </div>
+      {glutenFreeItems && <fieldset><legend>Gluten-free items available</legend><p className="small muted">Choose items known to be available gluten-free. Leave blank if not yet recorded.</p><div className="tag-options">{glutenFreeItems.filter(item => item.active || source?.gluten_free_items?.includes(item.key)).map(item => <label key={item.key}><input type="checkbox" checked={items.includes(item.key)} onChange={e => setItems(toggle(items, item.key, e.target.checked))}/>{item.label}</label>)}</div></fieldset>}
       <fieldset>
         <legend>Gluten-free menu options</legend>
         <p className="small muted">These describe menu information, not a safety certification.</p>

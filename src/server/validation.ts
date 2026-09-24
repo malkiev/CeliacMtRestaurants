@@ -17,6 +17,7 @@ export const placeSchema = z
   .object({
     catalogue_enabled: z.never().optional(),
     description: optionalString(2000),
+    gluten_free_items: z.array(z.string().min(2).max(64)).max(100).default([]),
     short_description: optionalString(280),
     brand_name: optionalString(120),
     branch_name: optionalString(120),
@@ -67,6 +68,7 @@ export const placeSchema = z
       ...p,
       type: types[0] || '',
       business_types: types,
+      gluten_free_items: [...new Set(p.gluten_free_items)],
       services: [...new Set(p.services)],
       locality: normaliseLocality(p.locality, p.island),
       menu_options: [...new Set(p.menu_options)],

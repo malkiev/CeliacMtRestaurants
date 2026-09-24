@@ -4,11 +4,13 @@ import type { Member } from '../shared/types';
 import { normaliseLocality } from '../shared/place-options';
 import { audit, owns, storedPlace } from './db';
 import { placeSchema } from './validation';
+import { assertGlutenFreeItems } from './gluten-free-items';
 import { assertBusinessTypes } from './business-types';
 
 type PlaceInput = z.output<typeof placeSchema>;
 const fields = [
   'business_types',
+  'gluten_free_items',
   'services',
   'advance_orders',
   'premises',
@@ -131,6 +133,7 @@ export async function saveAdminPlace(db: D1Database, member: Member, input: unkn
     : null;
   const v = parsePlaceInput(input, existing || undefined);
   await assertBusinessTypes(db, v.business_types, !!id);
+  await assertGlutenFreeItems(db, v.gluten_free_items, existing || undefined);
   if (!id && !v.business_types.length)
     throw new HTTPException(400, { message: 'Choose at least one business type' });
   if (id) {
