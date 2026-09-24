@@ -1,7 +1,7 @@
 import { Fragment, lazy, Suspense, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUpRight, Compass, List, Map as MapIcon, Navigation, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { Bootstrap } from '../shared/types';
-import { CUISINES, distanceKm, filterPlaces, PLACE_TYPES, SERVICES } from '../shared/domain';
+import { CUISINES, distanceKm, filterPlaces, businessTypes, PLACE_TYPES, SERVICES } from '../shared/domain';
 import { Notice, PlaceCard, Sponsor } from './components';
 const MapView=lazy(()=>import('./MapView'));
 
@@ -12,9 +12,9 @@ export function Discover({data,path,search}:{data:Bootstrap;path:string;search:s
   const view=path==='/map'?'map':'list';
   const category=params.get('category')==='shops'?'shop':path==='/shops'?'shop':path==='/restaurants'||path==='/'?'restaurant':undefined;
   const route=category==='shop'?'/shops':category==='restaurant'&&path==='/'?'/restaurants':path;
-  const catalog=(data.business_types||PLACE_TYPES.map((key,index)=>({key,label:key,category:'restaurant' as const,sort_order:index,active:1}))).filter(t=>t.active&&(!category||t.category===category));
+  const catalog=(data.business_types||PLACE_TYPES.map((key,index)=>({key,label:key,category: ['Butcher','Food shop','Food producer','Importer/distributor'].includes(key)?'shop' as const:'restaurant' as const,sort_order:index,active:1}))).filter(t=>!category||t.category===category);
   const categoryKeys=new Set(catalog.map(t=>t.key));
-  const categoryPlaces=category?data.places.filter(p=>(p.business_types||[]).some(t=>categoryKeys.has(t))):data.places;
+  const categoryPlaces=category?data.places.filter(p=>businessTypes(p).some(t=>categoryKeys.has(t))):data.places;
   const localities=[...new Set(data.places.filter(p=>!filters.island||p.island===filters.island).map(p=>p.locality).filter(Boolean))].sort();
   function update(patch:Partial<typeof filters>){const next={...filters,...patch};setFilters(next);setLimit(12);const qs=new URLSearchParams();for(const [k,v]of Object.entries(next))if(v)qs.set(k,String(v));history.replaceState(null,'',`${route}${qs.size?'?'+qs:''}`);}
   const filtered=useMemo(()=>filterPlaces(categoryPlaces,filters).sort((a,b)=>{

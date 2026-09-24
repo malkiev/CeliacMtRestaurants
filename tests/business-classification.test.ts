@@ -104,6 +104,18 @@ test('minimal listing, multiple categories, service filters and non-meal pricing
   );
 });
 
+test('bootstrap retains inactive type categories for existing directory listings', async () => {
+  database.sqlite.prepare("UPDATE business_types SET active=0 WHERE key='Food producer'").run();
+  const result = await bootstrap({
+    DB: database.db,
+    APP_URL: 'http://localhost',
+    ENVIRONMENT: 'development',
+  } as Bindings, 'http://localhost/shops');
+  expect(result.business_types).toContainEqual(expect.objectContaining({
+    key: 'Food producer', category: 'shop', active: 0,
+  }));
+});
+
 test('no public premises omit private location from detail and directory bootstrap', async () => {
   const id = await saveAdminPlace(database.db, admin, {
     ...input,

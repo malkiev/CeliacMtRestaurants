@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import type { BusinessType } from '../src/shared/types';
 
 function fixture() {
   return {
@@ -39,7 +40,7 @@ function fixture() {
     photo: null,
   };
 }
-async function setup(page: Page, owner = false, patch: Record<string, unknown> = {}) {
+async function setup(page: Page, owner = false, patch: Record<string, unknown> = {}, businessTypes?: BusinessType[]) {
   let place = { ...fixture(), ...patch };
   const submitted: Record<string, any>[] = [];
   await page.route('**/api/**', async (route) => {
@@ -56,6 +57,7 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
       return route.fulfill({
         json: {
           places: [place],
+          business_types: businessTypes,
           links: [],
           adverts: [],
           detail: {
@@ -86,7 +88,7 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
       });
     if (path === '/api/admin/data')
       return route.fulfill({
-        json: { places: [place], users: [], links: [], adverts: [], ownerships: [] },
+        json: { places: [place], users: [], links: [], adverts: [], ownerships: [], business_types: businessTypes },
       });
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON();
@@ -224,6 +226,47 @@ test('locality choices follow the island and owners can propose a description', 
   });
 });
 
+const managedTypes: BusinessType[] = [
+  { key: 'Cafe', label: 'Cafe', category: 'restaurant', sort_order: 1, active: 0 },
+  { key: 'Market', label: 'Local market', category: 'shop', sort_order: 2, active: 1 },
+];
+
+test('public forms use managed types and preserve existing inactive selections', async ({ page }) => {
+  await setup(page, true, {}, managedTypes);
+  await page.goto('/suggest');
+  await expect(page.getByRole('checkbox', { name: 'Local market', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Café', exact: true })).toHaveCount(0);
+  await page.goto('/places/place');
+  await page.getByRole('button', { name: 'Edit place details' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Café', exact: true })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Local market', exact: true })).toBeVisible();
+});
+
+test('inactive types keep existing places in their directory section', async ({ page }) => {
+  await setup(page, false, {}, managedTypes);
+  await page.goto('/restaurants');
+  await expect(page.locator('.place-card')).toContainText('Example cafe');
+  await page.goto('/shops');
+  await expect(page.locator('.place-card')).toHaveCount(0);
+});
+
+test('admin type edits use PATCH without sending the stable key', async ({ page }) => {
+  await setup(page, false, {}, managedTypes);
+  let saved: Record<string, unknown> | undefined;
+  await page.route('**/api/admin/business-types/Cafe', async route => {
+    expect(route.request().method()).toBe('PATCH');
+    saved = route.request().postDataJSON();
+    await route.fulfill({ json: { key: 'Cafe', ...saved } });
+  });
+  await page.goto('/admin');
+  await page.getByRole('button', { name: 'types', exact: true }).click();
+  await page.getByText('Cafe', { exact: true }).click();
+  const form = page.locator('details').filter({ has: page.locator('summary', { hasText: /^Cafe$/ }) });
+  await form.getByLabel('Label', { exact: true }).fill('Coffee shop');
+  await form.getByRole('button', { name: 'Save type' }).click();
+  await expect.poll(() => saved).toEqual({ label: 'Coffee shop', category: 'restaurant', sort_order: 1, active: false });
+});
+
 test('compact directory introduction keeps search visible on desktop and mobile', async ({
   page,
 }, testInfo) => {
@@ -357,7 +400,7 @@ test('shop importer matches both types and service filter persists on map naviga
     business_types: ['Food shop', 'Importer/distributor'],
     services: ['Delivery'],
   });
-  await page.goto('/');
+  await page.goto('/shops');
   await page.getByRole('button', { name: 'More filters' }).click();
   await page
     .getByRole('combobox', { name: 'Business type', exact: true })

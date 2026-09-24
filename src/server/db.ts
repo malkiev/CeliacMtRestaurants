@@ -114,7 +114,7 @@ export async function bootstrap(env: Bindings, url: string): Promise<Bootstrap> 
     profile: path.startsWith('/users/')
       ? await getPublicProfile(env.DB, decodeURIComponent(path.slice(7)))
       : null,
-    business_types: await listBusinessTypes(env.DB, true),
+    business_types: await listBusinessTypes(env.DB),
     places: places.results.map(publicPlace),
     links: links.results,
     adverts: adverts.results,
