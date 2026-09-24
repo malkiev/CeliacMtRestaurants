@@ -86,6 +86,8 @@ em { font-style: normal; }
 .results-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; }
 .results-summary p { margin: 0; }
 .results-summary .text-link { min-height: 44px; }
+.place-art.shop { background: #dfe7d7; color: #4e6054; }
+.place-art.shop .art-circle { border-color: #b9c8b2; box-shadow: 0 7px 0 #b9c8b2; }
 @media(max-width: 600px) {
  .directory-intro h1 { font-size: 24px; }
  .results-summary { width: 100%; justify-content: space-between; }
