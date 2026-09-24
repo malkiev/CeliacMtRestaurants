@@ -112,7 +112,9 @@ export function PlaceForm({ member, place, initial, onDone, onSave }: Props) {
           throw error;
         }
       },
-      onSave ? 'Place details saved.' : 'Your changes are awaiting moderator approval.',
+      onSave || member?.role === 'admin'
+        ? 'Place details saved.'
+        : 'Your changes are awaiting moderator approval.',
     );
   }
   return (
@@ -446,7 +448,11 @@ export function PlaceForm({ member, place, initial, onDone, onSave }: Props) {
       </details>
       <FormStatus {...a} />
       <SubmitButton busy={a.busy}>
-        {onSave ? 'Save place details' : owner ? 'Submit place updates' : 'Submit for approval'}
+        {onSave || member?.role === 'admin'
+          ? 'Save place details'
+          : owner
+            ? 'Submit place updates'
+            : 'Submit for approval'}
       </SubmitButton>
     </form>
   );

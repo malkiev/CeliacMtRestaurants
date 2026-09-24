@@ -7,7 +7,7 @@ import { isLocal } from './env';
 import { createAuth } from './auth';
 import { audit, bootstrap, getDetail, owns, placeSelect, storedPlace } from './db';
 import { adSchema, linkSchema, replySchema, reviewSchema, text } from './validation';
-import { decide } from './moderation';
+import { decide, submitContribution } from './moderation';
 import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility } from './places';
 import { checkCover, coverSchema } from './covers';
 
@@ -78,9 +78,10 @@ api.post('/submissions',async c=>{
   }
   const id=crypto.randomUUID();
   const key=`${input.kind}:${input.kind==='reply'?target:member.id+':'+(input.place_id||'new')}`;
-  try{await db.prepare('INSERT INTO submissions(id,kind,author_id,place_id,target_id,payload,dedupe_key) VALUES(?,?,?,?,?,?,?)').bind(id,input.kind,member.id,input.place_id||null,target,JSON.stringify(payload),key).run();}
+  let status:'pending'|'approved';
+  try{status=await submitContribution(db,member,{id,kind:input.kind,author_id:member.id,place_id:input.place_id||null,target_id:target,payload:JSON.stringify(payload),dedupe_key:key});}
   catch(e){if(String(e).includes('UNIQUE'))throw new HTTPException(409,{message:'A submission is already awaiting approval. Withdraw it from your account before submitting a replacement.'});throw e;}
-  return c.json({id,status:'pending'},201);
+  return c.json({id,status},201);
 });
 api.delete('/my/submissions/:id',async c=>{
   const id=c.req.param('id');const db=c.env.DB; const m=c.get('member');
