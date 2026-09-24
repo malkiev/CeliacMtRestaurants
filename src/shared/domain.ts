@@ -3,6 +3,7 @@ import type { Place } from './types';
 export const PLACE_TYPES = [
   'Restaurant',
   'Cafe',
+  'Wine bar',
   'Bakery',
   'Butcher',
   'Food shop',

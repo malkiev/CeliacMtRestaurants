@@ -2,6 +2,7 @@ import type { Bootstrap, Detail, Place } from '../shared/types';
 import type { Bindings } from './env';
 import { isLocal } from './env';
 import { normaliseLocality } from '../shared/place-options';
+import { getIdentity, getPublicProfile } from './profiles';
 
 export const placeSelect = `SELECT p.*, (SELECT AVG(rating) FROM feedback f WHERE f.place_id=p.id AND f.visible=1 AND f.kind='review') rating, (SELECT COUNT(*) FROM feedback f WHERE f.place_id=p.id AND f.visible=1 AND f.kind='review') review_count, COALESCE((SELECT ph.id FROM place_covers pc JOIN photos ph ON ph.id=pc.photo_id WHERE pc.place_id=p.id AND ph.place_id=p.id AND ph.status='approved'), (SELECT id FROM photos ph WHERE ph.place_id=p.id AND ph.status='approved' ORDER BY created_at,id LIMIT 1)) photo FROM places p`;
 export function storedPlace(row: Record<string, unknown>): Place {
@@ -46,12 +47,12 @@ export async function getDetail(env: Bindings, slug: string): Promise<Detail | n
   const place = publicPlace(row);
   const [feedback, replies, photos] = await Promise.all([
     env.DB.prepare(
-      "SELECT id,place_id,author_name,kind,body,rating,visit_date,created_at,source_ref FROM feedback WHERE place_id=? AND visible=1 ORDER BY COALESCE(created_at,'') DESC",
+      "SELECT id,place_id,author_id,author_name,kind,body,rating,visit_date,created_at,source_ref FROM feedback WHERE place_id=? AND visible=1 ORDER BY COALESCE(created_at,'') DESC",
     )
       .bind(place.id)
       .all(),
     env.DB.prepare(
-      'SELECT r.id,r.feedback_id,r.author_name,r.body,r.created_at,r.updated_at FROM replies r JOIN feedback f ON f.id=r.feedback_id WHERE r.place_id=? AND r.visible=1 AND f.visible=1',
+      'SELECT r.id,r.feedback_id,r.author_id,r.author_name,r.body,r.created_at,r.updated_at FROM replies r JOIN feedback f ON f.id=r.feedback_id WHERE r.place_id=? AND r.visible=1 AND f.visible=1',
     )
       .bind(place.id)
       .all(),
@@ -70,10 +71,26 @@ export async function getDetail(env: Bindings, slug: string): Promise<Detail | n
           .all<Record<string, unknown>>()
       ).results.map(publicPlace)
     : [];
+  const identities = new Map<string, Awaited<ReturnType<typeof getIdentity>>>();
+  const authors = [...feedback.results.filter((r) => r.kind !== 'imported'), ...replies.results];
+  await Promise.all(
+    [
+      ...new Set(
+        authors.map((r) => r.author_id).filter((id): id is string => typeof id === 'string'),
+      ),
+    ].map(async (id) => {
+      identities.set(id, await getIdentity(env.DB, id));
+    }),
+  );
+  function withIdentity(row: Record<string, unknown>) {
+    const { author_id, ...safe } = row;
+    const author = row.kind === 'imported' ? null : identities.get(String(author_id)) || null;
+    return { ...safe, author, author_name: author?.name || row.author_name };
+  }
   return {
     place,
-    feedback: feedback.results,
-    replies: replies.results,
+    feedback: feedback.results.map(withIdentity),
+    replies: replies.results.map(withIdentity),
     photos: photos.results,
     branches,
   } as Detail;
@@ -93,6 +110,9 @@ export async function bootstrap(env: Bindings, url: string): Promise<Bootstrap> 
     path.startsWith('/places/') ? getDetail(env, decodeURIComponent(path.slice(8))) : null,
   ]);
   return {
+    profile: path.startsWith('/users/')
+      ? await getPublicProfile(env.DB, decodeURIComponent(path.slice(7)))
+      : null,
     places: places.results.map(publicPlace),
     links: links.results,
     adverts: adverts.results,

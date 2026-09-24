@@ -5,6 +5,7 @@ import type { Hono } from 'hono';
 import type { AppEnv, Bindings } from './env';
 import { createAuth } from './auth';
 import { submitContribution } from './moderation';
+import { cleanupAvatars } from './profiles';
 
 export function registerPhotos(api:Hono<AppEnv>){
   api.post('/photos',async c=>{
@@ -43,6 +44,7 @@ export async function photoResponse(env:Bindings,req:Request,id:string){
   return new Response(object.body,{headers:{'Content-Type':'image/jpeg','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 }
 export async function cleanup(env:Bindings){
+  await cleanupAvatars(env);
   const rejected=await env.DB.prepare("SELECT id,object_key,thumb_key FROM photos WHERE status='rejected' LIMIT 100").all<{id:string;object_key:string;thumb_key:string}>();
   for(const photo of rejected.results){await env.PHOTOS.delete([photo.object_key,photo.thumb_key]);await env.DB.prepare('DELETE FROM photos WHERE id=?').bind(photo.id).run();}
   const objects=await env.PHOTOS.list({prefix:'uploads/',limit:500});

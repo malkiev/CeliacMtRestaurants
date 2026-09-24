@@ -185,6 +185,10 @@ The current [admin bootstrap script](scripts/admin.mjs) supports local databases
 
 ## 5. Deploy and test staging
 
+Before deploying the user-profile feature, apply migration `0007_user_profiles.sql` to the target D1 database. `npm.cmd run db:migrate` applies it locally only (already applied in this workspace); use the existing remote-migration procedure for staging or production. This adds profile fields and a durable avatar cleanup queue without changing roles or existing accounts.
+
+Avatars reuse the private photo bucket with an `avatars/` prefix, capped at 100,000 bytes per current user photo. Defaults and six bundled SVG presets require no per-user image storage. The daily scheduled job also retries avatar cleanup (up to 100 queued objects older than 24 hours per run). Include that prefix in backup/restore procedures and monitor queue growth and R2 deletion failures. Profile name and health preferences must survive real Google/email sign-in and account linking. Verify that unshared health answers are absent from public profile APIs and page source, and that avatar replacement, removal, and account deletion work against R2. No new hosting service is needed.
+
 Run the existing checks and browser tests, then deploy using the staging configuration.
 
 Test real email delivery, Google login, account linking, submissions, moderation, photo uploads, and admin permissions. Also check hidden addresses, mobile installation, and denied geolocation.

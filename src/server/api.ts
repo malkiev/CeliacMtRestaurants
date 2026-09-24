@@ -10,6 +10,7 @@ import { adSchema, linkSchema, replySchema, reviewSchema, text } from './validat
 import { decide, submitContribution } from './moderation';
 import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility } from './places';
 import { checkCover, coverSchema } from './covers';
+import { getIdentity, getPublicProfile, registerProfiles } from './profiles';
 
 export const api=new Hono<AppEnv>();
 api.use('*',async(c,next)=>{
@@ -22,6 +23,7 @@ api.use('*',async(c,next)=>{
 });
 api.get('/bootstrap',async c=>{const path=c.req.query('path')||'/';return c.json(await bootstrap(c.env,new URL(path.startsWith('/')&&!path.startsWith('//')?path:'/',c.req.url).href));});
 api.get('/places/:slug',async c=>{const d=await getDetail(c.env,c.req.param('slug'));if(!d)throw new HTTPException(404,{message:'Place not found'});return c.json(d);});
+api.get('/profiles/:id',async c=>{const profile=await getPublicProfile(c.env.DB,c.req.param('id'));if(!profile)throw new HTTPException(404,{message:'Profile not found'});return c.json(profile);});
 api.on(['GET','POST'],'/auth/*',c=>createAuth(c.env).handler(c.req.raw));
 api.get('/local-mail',async c=>{
   if(!isLocal(c.env,c.req.url))throw new HTTPException(404);
@@ -32,7 +34,9 @@ api.use('*',async(c,next)=>{
   if(!session){if(c.req.path==='/api/me')return c.json(null);throw new HTTPException(401,{message:'Please sign in to continue'});}
   const profile=await c.env.DB.prepare('SELECT role FROM profiles WHERE user_id=?').bind(session.user.id).first<{role:Member['role']}>();
   const ownerships=await c.env.DB.prepare('SELECT place_id FROM ownerships WHERE user_id=? AND active=1').bind(session.user.id).all<{place_id:string}>();
-  c.set('member',{id:session.user.id,name:session.user.name,email:session.user.email,role:profile?.role||'member',ownerships:ownerships.results.map(o=>o.place_id)});
+  const identity=await getIdentity(c.env.DB,session.user.id);
+  if(!identity)throw new HTTPException(401,{message:'Please sign in again'});
+  c.set('member',{id:session.user.id,name:identity.name,email:session.user.email,role:profile?.role||'member',ownerships:ownerships.results.map(o=>o.place_id)});
   if(c.req.method!=='GET'){
     const key=`${session.user.id}:${Math.floor(Date.now()/3600000)}`;
     const limit=await c.env.DB.prepare('INSERT INTO request_limits(key,count,expires_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count').bind(key,Date.now()+3600000).first<{count:number}>();
@@ -41,6 +45,7 @@ api.use('*',async(c,next)=>{
   await next();
 });
 api.get('/me',c=>c.json(c.get('member')));
+registerProfiles(api);
 api.get('/my/submissions',async c=>{
   const rows=await c.env.DB.prepare('SELECT s.*,p.name place_name FROM submissions s LEFT JOIN places p ON p.id=s.place_id WHERE author_id=? ORDER BY created_at DESC LIMIT 100').bind(c.get('member').id).all<Submission&{payload:string}>();
   return c.json(rows.results.map(r=>({...r,payload:JSON.parse(r.payload)})));
@@ -111,11 +116,11 @@ api.delete('/my/account',async c=>{
 
 api.use('/moderation/*',async(c,next)=>{if(c.get('member').role==='member')throw new HTTPException(403);await next();});
 api.get('/moderation/queue',async c=>{
-  const rows=await c.env.DB.prepare("SELECT s.*,u.name author_name,p.name place_name FROM submissions s LEFT JOIN user u ON u.id=s.author_id LEFT JOIN places p ON p.id=s.place_id WHERE s.status='pending' ORDER BY s.created_at LIMIT 100").all<Submission&{payload:string}>();
+  const rows=await c.env.DB.prepare("SELECT s.*,COALESCE(up.display_name,u.name) author_name,p.name place_name FROM submissions s LEFT JOIN user u ON u.id=s.author_id LEFT JOIN profiles up ON up.user_id=u.id LEFT JOIN places p ON p.id=s.place_id WHERE s.status='pending' ORDER BY s.created_at LIMIT 100").all<Submission&{payload:string}>();
   return c.json(rows.results.filter(r=>r.kind!=='owner_claim'||c.get('member').role==='admin').map(r=>({...r,payload:JSON.parse(r.payload)})));
 });
 api.post('/moderation/:id/decision',async c=>{const v=z.object({approved:z.boolean(),reason:z.string().trim().max(1000).default('')}).parse(await c.req.json());await decide(c.env.DB,c.get('member'),c.req.param('id'),v.approved,v.reason);return c.json({ok:true});});
-api.get('/moderation/history',async c=>c.json((await c.env.DB.prepare('SELECT a.id,a.action,a.target_id,a.detail,a.created_at,u.name actor_name FROM audit_log a LEFT JOIN user u ON u.id=a.actor_id ORDER BY a.created_at DESC LIMIT 100').all()).results));
+api.get('/moderation/history',async c=>c.json((await c.env.DB.prepare('SELECT a.id,a.action,a.target_id,a.detail,a.created_at,COALESCE(up.display_name,u.name) actor_name FROM audit_log a LEFT JOIN user u ON u.id=a.actor_id LEFT JOIN profiles up ON up.user_id=u.id ORDER BY a.created_at DESC LIMIT 100').all()).results));
 api.post('/moderation/places/:id/coordinates',async c=>{
   const m=c.get('member');const id=c.req.param('id');if(await owns(c.env.DB,m.id,id))throw new HTTPException(403);
   if(await c.env.DB.prepare("SELECT 1 FROM places WHERE id=? AND premises='none'").bind(id).first())throw new HTTPException(400,{message:'A business without public premises cannot have a public map pin'});
@@ -126,7 +131,7 @@ api.post('/moderation/places/:id/coordinates',async c=>{
 api.use('/admin/*',async(c,next)=>{if(c.get('member').role!=='admin')throw new HTTPException(403,{message:'Admin access required'});await next();});
 api.get('/admin/data',async c=>{
   const [users,places,links,adverts,ownerships]=await Promise.all([
-    c.env.DB.prepare("SELECT u.id,u.name,u.email,COALESCE(p.role,'member') role FROM user u LEFT JOIN profiles p ON p.user_id=u.id ORDER BY u.name LIMIT 500").all(),
+    c.env.DB.prepare("SELECT u.id,COALESCE(p.display_name,u.name) name,u.email,COALESCE(p.role,'member') role FROM user u LEFT JOIN profiles p ON p.user_id=u.id ORDER BY u.name LIMIT 500").all(),
     c.env.DB.prepare(`${placeSelect} ORDER BY p.name`).all(),c.env.DB.prepare('SELECT * FROM useful_links ORDER BY sort_order').all(),c.env.DB.prepare('SELECT * FROM adverts').all(),c.env.DB.prepare('SELECT * FROM ownerships').all(),
   ]);return c.json({users:users.results,places:places.results.map(p=>({...storedPlace(p),catalogue_enabled:!!p.catalogue_enabled})),links:links.results,adverts:adverts.results,ownerships:ownerships.results});
 });
