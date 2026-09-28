@@ -97,6 +97,8 @@ Migration `0003_place_covers.sql` adds the cover selection table. Apply it local
 
 Photos currently use the separate **Add photos** form and appear in the place gallery after moderation; they are not attached to individual reviews.
 
+Admins can choose **Delete photo** beneath any gallery photo, including a place’s only photo, and confirm permanent deletion. The backend enforces admin access, removes the cover selection if needed, closes pending photo submissions, and records the deletion in the audit log while preserving submission history. The original and thumbnail are deleted from R2; if storage is temporarily unavailable, the photo is immediately inaccessible and scheduled orphan cleanup retries removal. No migration or new hosting service is required.
+
 Typography uses DM Sans with 16px main text and sidebar links, larger secondary labels, and reduced-motion support. Checks cover 320px, 375px, and desktop layouts; this is not a full accessibility audit.
 
 ## Place details and branches

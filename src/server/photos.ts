@@ -8,6 +8,23 @@ import { submitContribution } from './moderation';
 import { cleanupAvatars } from './profiles';
 
 export function registerPhotos(api:Hono<AppEnv>){
+  api.delete('/photos/:id',async c=>{
+    const member=c.get('member');
+    if(member.role!=='admin')throw new HTTPException(403,{message:'Only admins can delete photos.'});
+    const id=c.req.param('id');
+    const photo=await c.env.DB.prepare('SELECT object_key,thumb_key FROM photos WHERE id=?').bind(id).first<{object_key:string;thumb_key:string}>();
+    if(!photo)throw new HTTPException(404,{message:'Photo not found.'});
+    // Remove access and record the decision atomically before deleting storage objects.
+    await c.env.DB.batch([
+      c.env.DB.prepare("INSERT INTO audit_log(id,actor_id,action,target_id) SELECT ?,?,'delete_photo',id FROM photos WHERE id=?").bind(crypto.randomUUID(),member.id,id),
+      c.env.DB.prepare("UPDATE submissions SET status='rejected',reason='Photo deleted by admin',decided_by=?,decided_at=? WHERE kind='photo' AND target_id=? AND status='pending'").bind(member.id,new Date().toISOString(),id),
+      c.env.DB.prepare('DELETE FROM place_covers WHERE photo_id=?').bind(id),
+      c.env.DB.prepare('DELETE FROM photos WHERE id=?').bind(id),
+    ]);
+    try{await c.env.PHOTOS.delete([photo.object_key,photo.thumb_key]);}
+    catch{console.error('Photo storage deletion failed; scheduled orphan cleanup will retry.',{photoId:id});}
+    return c.json({ok:true});
+  });
   api.post('/photos',async c=>{
     const form=await c.req.formData();const file=form.get('photo');const placeId=z.string().min(1).parse(form.get('place_id'));const caption=z.string().trim().min(3).max(200).parse(form.get('caption'));const m=c.get('member');
     if(!(file instanceof File)||file.type!=='image/jpeg'||file.size>800000)throw new HTTPException(400,{message:'Use the photo form to upload a resized JPEG under 800 KB.'});
