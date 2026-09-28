@@ -161,7 +161,7 @@ function ProfileFields({
       </label>
       <label className="profile-sharing">
         <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
-        Show my conditions and symptom frequency on my public profile.
+        Show my conditions and symptom frequency on my public profile, and my conditions with my reviews.
       </label>
       <p className="small muted">
         These answers are optional and self-reported. They stay private unless you turn sharing on.
