@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { Hono } from 'hono';
 import jpeg from 'jpeg-js';
-import { registerPhotos } from '../src/server/photos';
+import { photoResponse, registerPhotos } from '../src/server/photos';
 import type { AppEnv, Bindings } from '../src/server/env';
 import { testDatabase } from './sqlite';
 
@@ -143,4 +143,82 @@ test('allows the twentieth daily photo and rejects the twenty-first', async () =
   expect((await upload()).status).toBe(201);
   expect((await upload()).status).toBe(429);
   expect(put).toHaveBeenCalledTimes(2);
+});
+
+function deletePhoto(id: string) {
+  return app.request(`/photos/${id}`, { method: 'DELETE' }, {
+    DB: database.db,
+    PHOTOS: { delete: remove },
+  } as unknown as Bindings);
+}
+
+test.each(['member', 'moderator'] as const)(
+  '%s cannot delete even their own photo',
+  async (actorRole) => {
+    const { id } = (await (await upload()).json()) as { id: string };
+    role = actorRole;
+    expect((await deletePhoto(id)).status).toBe(403);
+    expect(database.sqlite.prepare('SELECT id FROM photos').get()?.id).toBe(id);
+    expect(remove).not.toHaveBeenCalled();
+  },
+);
+
+test('admin deletes a cover and its objects while retaining submission history', async () => {
+  role = 'admin';
+  const { id } = (await (await upload()).json()) as { id: string };
+  database.sqlite
+    .prepare('INSERT INTO place_covers(place_id,photo_id) VALUES(?,?)')
+    .run('place', id);
+  expect((await deletePhoto(id)).status).toBe(200);
+  expect(database.sqlite.prepare('SELECT * FROM photos').all()).toHaveLength(0);
+  expect(database.sqlite.prepare('SELECT * FROM place_covers').all()).toHaveLength(0);
+  expect(database.sqlite.prepare('SELECT * FROM submissions').all()).toHaveLength(1);
+  expect(
+    database.sqlite
+      .prepare("SELECT actor_id,target_id FROM audit_log WHERE action='delete_photo'")
+      .get(),
+  ).toEqual({ actor_id: 'user', target_id: id });
+  expect(remove).toHaveBeenCalledWith(put.mock.calls.map((call) => call[0]));
+  expect(
+    (
+      await photoResponse(
+        { DB: database.db } as Bindings,
+        new Request(`https://example.test/photos/${id}`),
+        id,
+      )
+    ).status,
+  ).toBe(404);
+  expect((await deletePhoto(id)).status).toBe(404);
+});
+
+test('deleting a pending photo closes its moderation submission', async () => {
+  const { id } = (await (await upload()).json()) as { id: string };
+  role = 'admin';
+  expect((await deletePhoto(id)).status).toBe(200);
+  expect(
+    database.sqlite.prepare('SELECT status,decided_by,reason FROM submissions').get(),
+  ).toMatchObject({ status: 'rejected', decided_by: 'user', reason: 'Photo deleted by admin' });
+});
+
+test('audit failure rolls back deletion without deleting storage objects', async () => {
+  const { id } = (await (await upload()).json()) as { id: string };
+  role = 'admin';
+  database.sqlite.exec(
+    "CREATE TRIGGER fail_delete_audit BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'test failure'); END;",
+  );
+  app.onError((_error, c) => c.text('Failed', 500));
+  expect((await deletePhoto(id)).status).toBe(500);
+  expect(database.sqlite.prepare('SELECT id FROM photos').get()?.id).toBe(id);
+  expect(database.sqlite.prepare('SELECT status FROM submissions').get()?.status).toBe('pending');
+  expect(remove).not.toHaveBeenCalled();
+});
+
+test('storage failure leaves the photo inaccessible and logs cleanup retry', async () => {
+  const { id } = (await (await upload()).json()) as { id: string };
+  role = 'admin';
+  remove.mockRejectedValueOnce(new Error('Storage unavailable'));
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  expect((await deletePhoto(id)).status).toBe(200);
+  expect(database.sqlite.prepare('SELECT * FROM photos').all()).toHaveLength(0);
+  expect(log).toHaveBeenCalled();
 });
