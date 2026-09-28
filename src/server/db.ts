@@ -2,7 +2,7 @@ import type { Bootstrap, Detail, Place } from '../shared/types';
 import type { Bindings } from './env';
 import { isLocal } from './env';
 import { normaliseLocality } from '../shared/place-options';
-import { getIdentity, getPublicProfile } from './profiles';
+import { getPublicProfile } from './profiles';
 import { listGlutenFreeItems } from './gluten-free-items';
 import { listBusinessTypes } from './business-types';
 
@@ -74,7 +74,7 @@ export async function getDetail(env: Bindings, slug: string): Promise<Detail | n
           .all<Record<string, unknown>>()
       ).results.map(publicPlace)
     : [];
-  const identities = new Map<string, Awaited<ReturnType<typeof getIdentity>>>();
+  const identities = new Map<string, Awaited<ReturnType<typeof getPublicProfile>>>();
   const authors = [...feedback.results.filter((r) => r.kind !== 'imported'), ...replies.results];
   await Promise.all(
     [
@@ -82,12 +82,17 @@ export async function getDetail(env: Bindings, slug: string): Promise<Detail | n
         authors.map((r) => r.author_id).filter((id): id is string => typeof id === 'string'),
       ),
     ].map(async (id) => {
-      identities.set(id, await getIdentity(env.DB, id));
+      identities.set(id, await getPublicProfile(env.DB, id));
     }),
   );
   function withIdentity(row: Record<string, unknown>) {
     const { author_id, ...safe } = row;
-    const author = row.kind === 'imported' ? null : identities.get(String(author_id)) || null;
+    const profile = row.kind === 'imported' ? null : identities.get(String(author_id));
+    const author = profile ? {
+      id: profile.id, name: profile.name, avatar: profile.avatar,
+      ...(row.kind === 'review' && profile.conditions !== undefined
+        ? { conditions: profile.conditions } : {}),
+    } : null;
     return { ...safe, author, author_name: author?.name || row.author_name };
   }
   return {

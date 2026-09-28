@@ -203,6 +203,31 @@ test('current identities decorate reviews and replies while imported provenance 
     author: null,
   });
   expect(JSON.stringify(detail)).not.toContain('Wheat allergy');
+  for (const shared of [true, false]) {
+    await call('/my/profile', { share_health: shared });
+    const updated = await getDetail(env, 'place');
+    const reviewer = updated?.feedback.find((row) => row.id === 'review')?.author;
+    if (shared) expect(reviewer?.conditions).toEqual(health.conditions);
+    else expect(reviewer).not.toHaveProperty('conditions');
+    expect(reviewer).not.toHaveProperty('symptoms');
+    expect(reviewer).not.toHaveProperty('share_health');
+    expect(updated?.replies[0].author).not.toHaveProperty('conditions');
+    expect(updated?.feedback.find((row) => row.id === 'import')?.author).toBeNull();
+    const response = await worker.fetch(new Request('https://example.test/places/place'), {
+      ...env,
+      ASSETS: { fetch: async () => new Response('<html><body><!--app--><!--bootstrap--></body></html>') },
+    } as unknown as Bindings);
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    if (shared) {
+      expect(html).toContain('Dietary conditions:');
+      expect(html).toContain('Wheat allergy');
+    } else {
+      expect(html).not.toContain('Dietary conditions:');
+      expect(html).not.toContain('Wheat allergy');
+    }
+    expect(html).not.toContain('Sometimes');
+  }
 });
 function bytes(width = 64, height = 64) {
   return new Uint8Array(
