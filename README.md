@@ -4,7 +4,7 @@ Coeliac-friendly restaurants, shops and places to eat in Malta and Gozo. **Coeli
 
 Site copy uses British English and the spelling **coeliac**. The header, page titles, sign-in emails, offline page and installable app use the Coeliac.mt brand. The C monogram lives in `public/icon.svg`; regenerate the 192px and 512px install icons with `node scripts/generate-icons.mjs` after editing it. This uses the existing Playwright dependency and installed Edge on Windows, or Playwright Chromium elsewhere. The service-worker cache version changes with the branding so returning visitors receive the updated offline assets. This branding update does not change domain routing or require a database migration.
 
-`APP_URL` accepts one origin or a comma-separated list, such as `https://glutenfree.mt,https://coeliac.mt`. The first origin is used in the sitemap. Authentication uses the visited listed origin, and both origins are allowed to submit changes. Accounts and data are shared, but sign-in cookies remain separate for each domain. See [the domain transition steps](DEPLOYMENT.md#multiple-domains-and-the-coeliacmt-transition) for DNS and Google configuration. No schema migration or additional storage is needed.
+`APP_URL` accepts one origin or a comma-separated list, such as `https://coeliac.mt,https://glutenfree.mt`. The first origin is used for canonical URLs, sharing metadata and the sitemap. Authentication uses the visited listed origin, and both origins are allowed to submit changes. Accounts and data are shared, but sign-in cookies remain separate for each domain. See [the domain transition steps](DEPLOYMENT.md#multiple-domains-and-the-coeliacmt-transition) for DNS and Google configuration. No schema migration or additional storage is needed.
 
 Production deployment, required accounts, authentication configuration, and recovery steps are in [DEPLOYMENT.md](DEPLOYMENT.md). Staging is deferred for the early launch.
 
@@ -15,6 +15,18 @@ Production deployment, required accounts, authentication configuration, and reco
 Pushes and merges to `main` run the same checks, then apply pending production D1 migrations and deploy the Worker and assets. Deployment runs are serialized and are not cancelled midway. The Actions **Run workflow** button also supports a manual deployment from `main`; other branches run checks only.
 
 Before the first deployment, add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in GitHub's **Settings > Secrets and variables > Actions**. See [the production setup instructions](DEPLOYMENT.md#github-actions-production-deployment) for token permissions and configuration. The workflow does not require staging.
+
+## Search indexing and sharing
+
+The Worker renders titles, descriptions, canonical URLs, Open Graph/Twitter metadata and basic WebSite/WebPage structured data in the initial HTML. Published place pages use approved cover photos or the site icon, with no inferred ratings or verification claims in structured data. No new dependencies, database migrations or hosting services are required.
+
+The first `APP_URL` origin is canonical: production already uses `https://coeliac.mt,https://glutenfree.mt`. Both domains remain usable without redirects or changes to domain-specific authentication. `/restaurants` canonicalises to `/`; `/shops` is distinct. Directory filters and tracking parameters are omitted from canonical URLs. The sitemap includes only `/`, `/shops`, `/links`, `/about`, `/privacy` and published places.
+
+Account, admin, moderation, suggestion, public-profile, map and offline pages are `noindex`. These HTML pages remain crawlable so crawlers can read the directive; `robots.txt` blocks API crawling. Unknown pages and missing/unpublished records return 404. Nonproduction environments and unlisted hosts receive `noindex` and empty sitemaps. Public profiles remain accessible through the site. These directives do not replace backend permissions.
+
+After deployment, submit `https://coeliac.mt/sitemap.xml` in Google Search Console and inspect the home page, shops page and a published place. Check that Google sees the intended canonical and rendered content; indexing and search-result presentation are not guaranteed. `security.txt` is deferred until a monitored reporting contact is chosen.
+
+SEO response tests live in `tests/seo.test.ts` and run with `npm test`.
 
 ## Local setup
 
