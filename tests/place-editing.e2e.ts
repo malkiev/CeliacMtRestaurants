@@ -335,7 +335,7 @@ test('compact directory introduction keeps search visible on desktop and mobile'
         heading,
       );
       await expect(page.locator('.directory-intro p')).toHaveText(
-        'Discover places to eat, shop and order food, with experiences shared by the coeliac community.',
+        'Discover coeliac-friendly places to eat and gluten-free shops in Malta & Gozo, with experiences shared by the community.',
       );
       await expect(page.locator('.welcome-panel, .hero-scene, .community-strip')).toHaveCount(0);
       await expect(page.getByRole('link', { name: 'Find your next favourite' })).toHaveCount(0);
