@@ -1,6 +1,10 @@
-# glutenfree.mt
+# Coeliac.mt
 
-An independent community directory for Malta and Gozo. The chosen brand and public domain are **glutenfree.mt**, with production URL `https://glutenfree.mt`. The implementation uses React and Vite for the client, Hono on Cloudflare Workers, D1 for records, R2 for photos, and Better Auth for email links and Google sign-in. Product decisions and launch scope remain in [PLAN.md](PLAN.md).
+Coeliac-friendly restaurants, shops and places to eat in Malta and Gozo. **Coeliac.mt** is an independent community directory. Both `https://glutenfree.mt` and `https://coeliac.mt` are supported during the domain transition; both domains must be connected to the Worker. The implementation uses React and Vite for the client, Hono on Cloudflare Workers, D1 for records, R2 for photos, and Better Auth for email links and Google sign-in. Product decisions and launch scope remain in [PLAN.md](PLAN.md).
+
+Site copy uses British English and the spelling **coeliac**. The header, page titles, sign-in emails, offline page and installable app use the Coeliac.mt brand. The C monogram lives in `public/icon.svg`; regenerate the 192px and 512px install icons with `node scripts/generate-icons.mjs` after editing it. This uses the existing Playwright dependency and installed Edge on Windows, or Playwright Chromium elsewhere. The service-worker cache version changes with the branding so returning visitors receive the updated offline assets. This branding update does not change domain routing or require a database migration.
+
+`APP_URL` accepts one origin or a comma-separated list, such as `https://glutenfree.mt,https://coeliac.mt`. The first origin is used in the sitemap. Authentication uses the visited listed origin, and both origins are allowed to submit changes. Accounts and data are shared, but sign-in cookies remain separate for each domain. See [the domain transition steps](DEPLOYMENT.md#multiple-domains-and-the-coeliacmt-transition) for DNS and Google configuration. No schema migration or additional storage is needed.
 
 Production deployment, required accounts, authentication configuration, and recovery steps are in [DEPLOYMENT.md](DEPLOYMENT.md). Staging is deferred for the early launch.
 

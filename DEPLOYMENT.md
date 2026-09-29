@@ -1,5 +1,25 @@
 # Deployment plan
 
+## Multiple domains and the coeliac.mt transition
+
+`APP_URL` accepts comma-separated HTTP(S) origins, without paths, query strings, credentials or wildcards:
+
+```json
+"APP_URL": "https://glutenfree.mt,https://coeliac.mt"
+```
+
+The first entry is the primary sitemap origin. Both listed domains can serve the app and accept submissions. Google callbacks and email sign-in links use the listed domain where the request was made. Unlisted request hosts fall back to the primary origin for authentication links; forwarded host headers do not select an authentication domain. Single-origin local development remains supported, including Vite's proxy to Wrangler.
+
+1. Add `coeliac.mt` to the same Cloudflare account and complete nameserver activation. Add it under **Workers & Pages > coeliac-malta > Settings > Domains & Routes > Add > Custom Domain**, retaining `glutenfree.mt`. Wait for HTTPS to work.
+2. In the existing Google OAuth web client, retain the old settings and add `https://coeliac.mt` as an authorized JavaScript origin and `https://coeliac.mt/api/auth/callback/google` as an authorized redirect URI. Update consent-screen domain/branding settings if required by Google.
+3. Add the new origin to any map-provider domain restrictions. Keep the existing verified email sender, or verify the new sending domain in Resend before changing `EMAIL_FROM`.
+4. Deploy the application update. `APP_URL` is defined in `wrangler.jsonc`, so dashboard-only changes are overwritten by deployment. Existing D1/R2 bindings and authentication secrets must be retained; this change requires no migration or new storage service. Domain registration costs still apply.
+5. On each domain, test Google login, email login, existing account data, maps, submissions and private photo access. Users sign in separately on each domain; accounts and contributions are shared. Installed apps remain associated with their original domain.
+
+To make `coeliac.mt` primary later, reorder the list. This only changes the sitemap's preferred origin; it does not change branding or add redirects. A later migration should coordinate branding, canonical page URLs, old-link redirects, installed-app behavior, and the production URLs in `.github/workflows/ci.yml`. Both domains remain usable until that migration is implemented.
+
+Automated coverage in `tests/app-urls.test.ts` and `tests/api-origins.test.ts` checks origin parsing, per-domain Google callback generation, and submission origin enforcement. Real Google authorization, email delivery, DNS and installed-app behavior need the hosted checks above.
+
 ## GitHub Actions production deployment
 
 The current launch uses production only. The staging recommendations later in this document are future work, not prerequisites for this workflow.

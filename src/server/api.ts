@@ -5,6 +5,7 @@ import type { AppEnv } from './env';
 import type { Member, Submission } from '../shared/types';
 import { isLocal } from './env';
 import { createAuth } from './auth';
+import { appUrls } from './app-urls';
 import { audit, bootstrap, getDetail, owns, placeSelect, storedPlace } from './db';
 import { adSchema, linkSchema, replySchema, reviewSchema, text } from './validation';
 import { decide, submitContribution } from './moderation';
@@ -19,20 +20,20 @@ api.use('*',async(c,next)=>{
   c.header('Cache-Control','no-store');
   if(!['GET','HEAD','OPTIONS'].includes(c.req.method)){
     const origin=c.req.header('Origin');
-    if(origin!==new URL(c.env.APP_URL).origin)throw new HTTPException(403,{message:'This request must come from the website'});
+    if(!origin||!appUrls(c.env).includes(origin))throw new HTTPException(403,{message:'This request must come from the website'});
   }
   await next();
 });
 api.get('/bootstrap',async c=>{const path=c.req.query('path')||'/';return c.json(await bootstrap(c.env,new URL(path.startsWith('/')&&!path.startsWith('//')?path:'/',c.req.url).href));});
 api.get('/places/:slug',async c=>{const d=await getDetail(c.env,c.req.param('slug'));if(!d)throw new HTTPException(404,{message:'Place not found'});return c.json(d);});
 api.get('/profiles/:id',async c=>{const profile=await getPublicProfile(c.env.DB,c.req.param('id'));if(!profile)throw new HTTPException(404,{message:'Profile not found'});return c.json(profile);});
-api.on(['GET','POST'],'/auth/*',c=>createAuth(c.env).handler(c.req.raw));
+api.on(['GET','POST'],'/auth/*',c=>createAuth(c.env,c.req.url).handler(c.req.raw));
 api.get('/local-mail',async c=>{
   if(!isLocal(c.env,c.req.url))throw new HTTPException(404);
   return c.json((await c.env.DB.prepare("SELECT id,email,url,created_at FROM local_mail WHERE created_at>? ORDER BY created_at DESC LIMIT 20").bind(new Date(Date.now()-600000).toISOString()).all()).results);
 });
 api.use('*',async(c,next)=>{
-  const session=await createAuth(c.env).api.getSession({headers:c.req.raw.headers});
+  const session=await createAuth(c.env,c.req.url).api.getSession({headers:c.req.raw.headers});
   if(!session){if(c.req.path==='/api/me')return c.json(null);throw new HTTPException(401,{message:'Please sign in to continue'});}
   const profile=await c.env.DB.prepare('SELECT role FROM profiles WHERE user_id=?').bind(session.user.id).first<{role:Member['role']}>();
   const ownerships=await c.env.DB.prepare('SELECT place_id FROM ownerships WHERE user_id=? AND active=1').bind(session.user.id).all<{place_id:string}>();
@@ -169,5 +170,5 @@ api.post('/admin/adverts',async c=>{const raw=await c.req.json();const v=adSchem
 api.get('/admin/export',async c=>{
   const rows=(await c.env.DB.prepare('SELECT * FROM places ORDER BY name').all()).results;
   const csv=(v:unknown)=>`"${String(v??'').replace(/^[=+@-]/,"'$&").replaceAll('"','""')}"`;
-  const keys=Object.keys(rows[0]||{});c.header('Content-Disposition','attachment; filename="glutenfree-mt-places.csv"');c.header('Content-Type','text/csv; charset=utf-8');return c.body('\uFEFF'+[keys.map(csv).join(','),...rows.map(r=>keys.map(k=>csv(r[k])).join(','))].join('\r\n'));
+  const keys=Object.keys(rows[0]||{});c.header('Content-Disposition','attachment; filename="coeliac-mt-places.csv"');c.header('Content-Type','text/csv; charset=utf-8');return c.body('\uFEFF'+[keys.map(csv).join(','),...rows.map(r=>keys.map(k=>csv(r[k])).join(','))].join('\r\n'));
 });
