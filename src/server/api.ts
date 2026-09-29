@@ -170,5 +170,5 @@ api.post('/admin/adverts',async c=>{const raw=await c.req.json();const v=adSchem
 api.get('/admin/export',async c=>{
   const rows=(await c.env.DB.prepare('SELECT * FROM places ORDER BY name').all()).results;
   const csv=(v:unknown)=>`"${String(v??'').replace(/^[=+@-]/,"'$&").replaceAll('"','""')}"`;
-  const keys=Object.keys(rows[0]||{});c.header('Content-Disposition','attachment; filename="glutenfree-mt-places.csv"');c.header('Content-Type','text/csv; charset=utf-8');return c.body('\uFEFF'+[keys.map(csv).join(','),...rows.map(r=>keys.map(k=>csv(r[k])).join(','))].join('\r\n'));
+  const keys=Object.keys(rows[0]||{});c.header('Content-Disposition','attachment; filename="coeliac-mt-places.csv"');c.header('Content-Type','text/csv; charset=utf-8');return c.body('\uFEFF'+[keys.map(csv).join(','),...rows.map(r=>keys.map(k=>csv(r[k])).join(','))].join('\r\n'));
 });
