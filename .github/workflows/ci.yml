@@ -55,7 +55,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: production
-      url: https://glutenfree.mt
+      url: https://coeliac.mt
     steps:
       - uses: actions/checkout@v7
         with:
@@ -85,5 +85,5 @@ jobs:
         run: npx wrangler deploy --keep-vars
       - name: Check public pages after deployment
         run: |
-          curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 5 --max-time 30 --output /dev/null https://glutenfree.mt/
-          curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 5 --max-time 30 --output /dev/null https://glutenfree.mt/map
+          curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 5 --max-time 30 --output /dev/null https://coeliac.mt/
+          curl --fail --silent --show-error --location --retry 5 --retry-all-errors --retry-delay 5 --max-time 30 --output /dev/null https://coeliac.mt/map
