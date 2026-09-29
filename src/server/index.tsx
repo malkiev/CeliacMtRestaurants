@@ -6,6 +6,7 @@ import { renderToString } from 'react-dom/server';
 import { App } from '../client/App';
 import type { AppEnv, Bindings } from './env';
 import { api } from './api';
+import { appUrls } from './app-urls';
 import { bootstrap } from './db';
 import { cleanup, photoResponse, registerPhotos } from './photos';
 import { avatarResponse } from './profiles';
@@ -17,7 +18,7 @@ registerPhotos(api);app.route('/api',api);
 app.get('/photos/:id',c=>photoResponse(c.env,c.req.raw,c.req.param('id')));
 app.get('/avatars/:id',c=>avatarResponse(c.env,c.req.param('id')));
 app.get('/robots.txt',c=>c.text('User-agent: *\nDisallow: /api/\nDisallow: /account\nDisallow: /admin\nDisallow: /moderation\n'));
-app.get('/sitemap.xml',async c=>{const rows=await c.env.DB.prepare('SELECT slug FROM places WHERE published=1').all<{slug:string}>();return c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/','/links','/about',...rows.results.map(p=>'/places/'+p.slug)].map(p=>`<url><loc>${escape(c.env.APP_URL+p)}</loc></url>`).join('')}</urlset>`,200,{'Content-Type':'application/xml'});});
+app.get('/sitemap.xml',async c=>{const rows=await c.env.DB.prepare('SELECT slug FROM places WHERE published=1').all<{slug:string}>();return c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/','/links','/about',...rows.results.map(p=>'/places/'+p.slug)].map(p=>`<url><loc>${escape(appUrls(c.env)[0]+p)}</loc></url>`).join('')}</urlset>`,200,{'Content-Type':'application/xml'});});
 app.get('*',async c=>{
   const path=new URL(c.req.url).pathname;
   if(path.startsWith('/assets/')||['/sw.js','/manifest.webmanifest','/icon.svg','/icon-192.png','/icon-512.png','/offline.html'].includes(path))return c.env.ASSETS.fetch(c.req.raw);

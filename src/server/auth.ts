@@ -2,14 +2,16 @@ import { betterAuth } from 'better-auth';
 import { magicLink } from 'better-auth/plugins';
 import type { Bindings } from './env';
 import { isLocal } from './env';
+import { appUrls, requestAppUrl } from './app-urls';
 
-export function createAuth(env: Bindings) {
+export function createAuth(env: Bindings, requestUrl?: string) {
+  const baseURL = requestAppUrl(env, requestUrl);
   if (!env.BETTER_AUTH_SECRET || env.BETTER_AUTH_SECRET.length < 32) throw new Error('Authentication secret is not configured');
   return betterAuth({
     database: env.DB,
-    baseURL: env.APP_URL,
+    baseURL,
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: [env.APP_URL],
+    trustedOrigins: appUrls(env),
     rateLimit: { enabled: true, storage: 'database', window: 60, max: 30 },
     socialProviders: env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } } : {},
     account: { accountLinking: { enabled: true, trustedProviders: ['google'] } },
@@ -18,7 +20,7 @@ export function createAuth(env: Bindings) {
       expiresIn: 600,
       storeToken: 'hashed',
       sendMagicLink: async ({ email, url }) => {
-        if (isLocal(env, env.APP_URL)) {
+        if (isLocal(env, baseURL)) {
           await env.DB.prepare('INSERT INTO local_mail(id,email,url) VALUES(?,?,?)').bind(crypto.randomUUID(),email,url).run();
           return;
         }

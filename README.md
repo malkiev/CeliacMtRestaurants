@@ -1,6 +1,8 @@
 # glutenfree.mt
 
-An independent community directory for Malta and Gozo. The chosen brand and public domain are **glutenfree.mt**, with production URL `https://glutenfree.mt`. The implementation uses React and Vite for the client, Hono on Cloudflare Workers, D1 for records, R2 for photos, and Better Auth for email links and Google sign-in. Product decisions and launch scope remain in [PLAN.md](PLAN.md).
+An independent community directory for Malta and Gozo. The current brand and primary domain are **glutenfree.mt**. Configuration also allows `https://coeliac.mt` during the domain transition; both domains must be connected to the Worker. The implementation uses React and Vite for the client, Hono on Cloudflare Workers, D1 for records, R2 for photos, and Better Auth for email links and Google sign-in. Product decisions and launch scope remain in [PLAN.md](PLAN.md).
+
+`APP_URL` accepts one origin or a comma-separated list, such as `https://glutenfree.mt,https://coeliac.mt`. The first origin is used in the sitemap. Authentication uses the visited listed origin, and both origins are allowed to submit changes. Accounts and data are shared, but sign-in cookies remain separate for each domain. See [the domain transition steps](DEPLOYMENT.md#multiple-domains-and-the-coeliacmt-transition) for DNS and Google configuration. No schema migration or additional storage is needed.
 
 Production deployment, required accounts, authentication configuration, and recovery steps are in [DEPLOYMENT.md](DEPLOYMENT.md). Staging is deferred for the early launch.
 

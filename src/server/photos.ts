@@ -52,7 +52,7 @@ export async function photoResponse(env:Bindings,req:Request,id:string){
   const photo=await env.DB.prepare('SELECT * FROM photos WHERE id=?').bind(id).first<{status:string;author_id:string;object_key:string;thumb_key:string}>();
   if(!photo)return new Response('Not found',{status:404});
   if(photo.status!=='approved'){
-    const session=await createAuth(env).api.getSession({headers:req.headers});
+    const session=await createAuth(env,req.url).api.getSession({headers:req.headers});
     const role=session?await env.DB.prepare('SELECT role FROM profiles WHERE user_id=?').bind(session.user.id).first<{role:string}>():null;
     if(!session||(session.user.id!==photo.author_id&&!['admin','moderator'].includes(role?.role||'')))return new Response('Not found',{status:404});
   }
