@@ -77,6 +77,10 @@ for (const viewport of [
       await page.locator('.site-footer').scrollIntoViewIfNeeded();
       await expect(cards).toHaveCount(29);
 
+      // selectOption can operate offscreen. Return to the filters first so the
+      // shorter result list cannot immediately trigger another automatic batch.
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
       await page.getByRole('combobox', { name: 'Locality', exact: true }).selectOption('Valletta');
       await expect(cards).toHaveCount(12);
       await page.locator('.load-more').scrollIntoViewIfNeeded();
