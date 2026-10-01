@@ -5,7 +5,7 @@ import { owns } from './db';
 import { checkDuplicate, insertPlace, updatePlace, parsePlaceInput } from './places';
 import { checkCover, coverSchema } from './covers';
 import { placeSchema, reviewSchema, replySchema } from './validation';
-import { getIdentity } from './profiles';
+import { getIdentity, requireReviewProfile } from './profiles';
 
 type Contribution = Pick<Submission, 'id'|'kind'|'author_id'|'place_id'|'target_id'> & {payload:string;dedupe_key:string};
 
@@ -41,6 +41,7 @@ async function applyDecision(db:D1Database, member:Member, row:Pick<Contribution
     if(row.kind==='review'){
       const v=reviewSchema.parse(p);
       if(await owns(db,row.author_id,row.place_id!))throw new HTTPException(409,{message:'Owners cannot review their own business'});
+      await requireReviewProfile(db,row.author_id);
       stmts.push(db.prepare(`INSERT INTO feedback(id,place_id,author_id,author_name,kind,body,rating,visit_date,created_at,updated_at) SELECT ?,?,?,?,'review',?,?,?,?,? WHERE ${guard} ON CONFLICT(place_id,author_id) DO UPDATE SET body=excluded.body,rating=excluded.rating,visit_date=excluded.visit_date,updated_at=excluded.updated_at,author_name=excluded.author_name,visible=1`).bind(row.target_id||crypto.randomUUID(),row.place_id,row.author_id,author?.name||'Community member',v.body,v.rating,v.visit_date,now,now,id,token));
     } else if(row.kind==='reply'){
       const v=replySchema.parse(p);

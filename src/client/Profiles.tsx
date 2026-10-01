@@ -166,6 +166,7 @@ function ProfileFields({
       <p className="small muted">
         These answers are optional and self-reported. They stay private unless you turn sharing on.
         Turning it off hides them without deleting your answers.
+        Posting a review requires at least one condition and sharing to be enabled.
       </p>
       <FormStatus {...action} />
       <SubmitButton busy={action.busy}>Save profile</SubmitButton>

@@ -59,6 +59,15 @@ export async function getOwnProfile(db: D1Database, id: string): Promise<OwnProf
       }
     : null;
 }
+
+export async function requireReviewProfile(db: D1Database, id: string) {
+  const profile = await getOwnProfile(db, id);
+  if (!profile?.conditions.length || !profile.share_health) {
+    throw new HTTPException(400, {
+      message: 'Add your dietary conditions and enable profile sharing in Account before posting a review.',
+    });
+  }
+}
 export async function getPublicProfile(db: D1Database, id: string): Promise<PublicProfile | null> {
   const profile = await getOwnProfile(db, id);
   if (!profile) return null;

@@ -21,7 +21,7 @@ beforeEach(() => {
       )
       .run(id, id, `${id}@example.test`);
   database.sqlite.exec(
-    "INSERT INTO places(id,slug,name,island) VALUES('place','place','Test place','Malta')",
+    "INSERT INTO profiles(user_id,conditions,share_health) VALUES('author','[\"Coeliac\"]',1); INSERT INTO places(id,slug,name,island) VALUES('place','place','Test place','Malta')",
   );
 });
 afterEach(() => database.sqlite.close());
@@ -51,6 +51,17 @@ test('members and contributors cannot moderate their own submissions', async () 
     });
   }
   expect(database.sqlite.prepare('SELECT * FROM feedback').all()).toHaveLength(0);
+});
+
+test('moderation rechecks the reviewer profile without copying dietary answers', async () => {
+  submit();
+  database.sqlite.exec("UPDATE profiles SET share_health=0 WHERE user_id='author'");
+  await expect(decide(database.db, moderator, 'submission', true, '')).rejects.toMatchObject({ status: 400 });
+  expect(database.sqlite.prepare('SELECT * FROM feedback').all()).toHaveLength(0);
+  expect(database.sqlite.prepare("SELECT status FROM submissions WHERE id='submission'").get()?.status).toBe('pending');
+  database.sqlite.exec("UPDATE profiles SET share_health=1 WHERE user_id='author'");
+  await decide(database.db, moderator, 'submission', true, '');
+  expect(database.sqlite.prepare('SELECT * FROM feedback').all()).toHaveLength(1);
 });
 test('business representatives cannot moderate that business', async () => {
   submit();
