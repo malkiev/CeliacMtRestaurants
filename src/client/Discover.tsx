@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useMemo, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUpRight, Compass, List, Map as MapIcon, Navigation, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { Bootstrap } from '../shared/types';
 import { CUISINES, distanceKm, filterPlaces, businessTypes, PLACE_TYPES, SERVICES } from '../shared/domain';
@@ -22,6 +22,20 @@ export function Discover({data,path,search}:{data:Bootstrap;path:string;search:s
     if(sort==='nearby'&&position){const d=(p:typeof a)=>p.premises!=='none'&&p.coordinates_checked&&p.latitude!==null&&p.longitude!==null?distanceKm(position,{lat:p.latitude,lng:p.longitude}):Infinity;return d(a)-d(b);}
     return a.name.localeCompare(b.name);
   }),[categoryPlaces,filters,sort,position,data.gluten_free_item_catalog]);
+  const loadMoreRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const target=loadMoreRef.current;
+    if(view!=='list'||limit>=filtered.length||!target||typeof IntersectionObserver==='undefined')return;
+    let active=true;
+    const observer=new IntersectionObserver(entries=>{
+      if(!active||!entries.some(entry=>entry.isIntersecting))return;
+      active=false;
+      observer.disconnect();
+      setLimit(current=>Math.min(current+12,filtered.length));
+    },{rootMargin:'0px 0px 300px 0px'});
+    observer.observe(target);
+    return()=>{active=false;observer.disconnect();};
+  },[view,limit,filtered.length,filters,sort,position]);
   const qs=new URLSearchParams();for(const [k,v]of Object.entries(filters))if(v)qs.set(k,String(v));
   function nearMe(){setGeoError('');if(!navigator.geolocation){setGeoError('Location is unavailable in this browser. Choose a locality instead.');return;}setLocating(true);navigator.geolocation.getCurrentPosition(p=>{setPosition({lat:p.coords.latitude,lng:p.coords.longitude});setSort('nearby');setLocating(false);if(!data.places.some(p=>p.coordinates_checked))setGeoError('Your location is ready. Business map pins still need checking; browse by locality for now.');},()=>{setLocating(false);setGeoError('Location was unavailable or not allowed. You can still search by locality.');},{timeout:10000,maximumAge:60000});}
   const heading=category==='shop'?'Coeliac-friendly shops and suppliers in Malta & Gozo':category==='restaurant'?'Coeliac-friendly restaurants and places to eat in Malta & Gozo':'Coeliac-friendly places in Malta & Gozo';
@@ -32,7 +46,7 @@ export function Discover({data,path,search}:{data:Bootstrap;path:string;search:s
       {advanced&&<div className="advanced-filters">{([['cuisine','Cuisine',CUISINES],['type','Business type',catalog.map(t=>t.key)],['service','Service',SERVICES],['price','Price band',['1','2','3','4']]] as const).map(([key,label,options])=><label key={key}>{label}<select value={filters[key]} onChange={e=>update({[key]:e.target.value})}><option value="">Any {label.toLowerCase()}</option>{options.map(o=><option key={o} value={o}>{key==='price'?'€'.repeat(Number(o)):data.business_types?.find(t=>t.key===o)?.label||o}</option>)}</select></label>)}{category!=='shop'&&<label>Gluten-free item<select value={filters.item} onChange={e=>update({item:e.target.value})}><option value="">Any gluten-free item</option>{data.gluten_free_item_catalog?.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}</select></label>}<button className="text-link" onClick={()=>update({q:'',island:'',locality:'',cuisine:'',type:'',service:'',price:'',item:''})}>Clear all filters</button><p className="small muted">Price bands: € under €15 · €€ €15–24 · €€€ €25–39 · €€€€ €40+. Main meal, excluding drinks; estimates may vary.</p></div>}
       {geoError&&<Notice>{geoError}</Notice>}
       <div className="results-toolbar"><div className="results-summary"><p><strong>{filtered.length}</strong> {filtered.length===1?'place':'places'} to explore</p><a className="text-link" href="/suggest">Add a business <ArrowUpRight size={16}/></a></div><div className="results-controls"><label><span className="sr-only">Sort places</span><select value={sort} onChange={e=>setSort(e.target.value)}><option value="name">Name, A–Z</option><option value="rating">Highest rated</option>{position&&<option value="nearby">Nearest first</option>}</select></label><div className="view-toggle"><a className={view==='list'?'active':''} href={`${category==='shop'?'/shops':'/restaurants'}${qs.size?'?'+qs:''}`}><List size={16}/>List</a><a className={view==='map'?'active':''} href={`/map${qs.size?'?'+qs:''}`}><MapIcon size={16}/>Map</a></div></div></div>
-      {view==='map'?<Suspense fallback={<p>Loading map…</p>}><MapView places={filtered} styleUrl={data.config.mapStyle}/></Suspense>:filtered.length?<><div className="place-grid">{filtered.slice(0,limit).map((p,i)=><Fragment key={p.id}><PlaceCard place={p} distance={sort==='nearby'&&position&&p.premises!=='none'&&p.coordinates_checked&&p.latitude!==null&&p.longitude!==null?distanceKm(position,{lat:p.latitude,lng:p.longitude}):undefined}/>{(i===7||i===15)&&<Sponsor ad={data.adverts.filter(a=>a.placement==='list')[i===7?0:1]}/>}</Fragment>)}</div>{filtered.length>limit&&<div className="load-more"><button className="button" onClick={()=>setLimit(limit+12)}>Explore more places <ArrowDown size={16}/></button><p className="small muted">Showing {Math.min(limit,filtered.length)} of {filtered.length}</p></div>}</>:<div className="empty-state"><Compass size={36}/><h3>No places found this time</h3><p>Try another locality or loosen your filters. Know a place we’re missing?</p><a className="button" href="/suggest">Suggest a place</a></div>}
+      {view==='map'?<Suspense fallback={<p>Loading map…</p>}><MapView places={filtered} styleUrl={data.config.mapStyle}/></Suspense>:filtered.length?<><div className="place-grid">{filtered.slice(0,limit).map((p,i)=><Fragment key={p.id}><PlaceCard place={p} distance={sort==='nearby'&&position&&p.premises!=='none'&&p.coordinates_checked&&p.latitude!==null&&p.longitude!==null?distanceKm(position,{lat:p.latitude,lng:p.longitude}):undefined}/>{(i===7||i===15)&&<Sponsor ad={data.adverts.filter(a=>a.placement==='list')[i===7?0:1]}/>}</Fragment>)}</div><div className="load-more" ref={loadMoreRef}>{filtered.length>limit&&<button className="button" onClick={()=>setLimit(current=>Math.min(current+12,filtered.length))}>Explore more places <ArrowDown size={16}/></button>}<p className="small muted" role="status">Showing {Math.min(limit,filtered.length)} of {filtered.length}</p></div></>:<div className="empty-state"><Compass size={36}/><h3>No places found this time</h3><p>Try another locality or loosen your filters. Know a place we’re missing?</p><a className="button" href="/suggest">Suggest a place</a></div>}
     </section>
     <section className="contribute-banner"><div><p className="eyebrow">PULL UP A CHAIR</p><h2>Your experience could make<br/>someone else’s day.</h2><p>A favourite café. A helpful chef. A detail worth sharing.</p></div><a className="button primary" href="/suggest">Share a place <ArrowUpRight size={18}/></a></section>
   </>;

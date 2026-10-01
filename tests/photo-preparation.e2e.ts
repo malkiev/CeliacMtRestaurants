@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 
 test('real browser converts all supported formats and strips source metadata', async ({ page }) => {
+  // Keep the Vite origin for module imports without booting the directory app
+  // and making an unrelated request to an unavailable API server.
+  await page.route('/', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><html><head><title>Photo preparation test</title></head><body></body></html>',
+    }),
+  );
   await page.goto('/');
   const results = await page.evaluate(async () => {
     const modulePath = '/src/client/api.ts';
