@@ -11,7 +11,7 @@ import { adSchema, linkSchema, replySchema, reviewSchema, text } from './validat
 import { decide, submitContribution } from './moderation';
 import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility } from './places';
 import { checkCover, coverSchema } from './covers';
-import { getIdentity, getPublicProfile, registerProfiles } from './profiles';
+import { getIdentity, getPublicProfile, registerProfiles, requireReviewProfile } from './profiles';
 import { assertGlutenFreeItems, listGlutenFreeItems, registerGlutenFreeItemAdmin } from './gluten-free-items';
 import { assertBusinessTypes, listBusinessTypes, registerBusinessTypeAdmin } from './business-types';
 
@@ -61,6 +61,7 @@ api.post('/submissions',async c=>{
   let payload:unknown; let target=input.target_id||null;
   if(input.kind==='review'){
     if(await owns(db,member.id,input.place_id!))throw new HTTPException(403,{message:'Owners cannot review their own business'});
+    await requireReviewProfile(db,member.id);
     payload=reviewSchema.parse(input.payload);
     const existing=await db.prepare('SELECT id FROM feedback WHERE place_id=? AND author_id=?').bind(input.place_id,member.id).first<{id:string}>();target=existing?.id||crypto.randomUUID();
   }else if(input.kind==='reply'){

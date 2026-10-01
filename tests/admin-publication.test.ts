@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { testDatabase } from './sqlite';
 import { api } from '../src/server/api';
 import { decide } from '../src/server/moderation';
+import { getDetail } from '../src/server/db';
 import type { Bindings } from '../src/server/env';
 
 vi.mock('../src/server/auth', () => ({
@@ -18,7 +19,7 @@ beforeEach(() => {
   database = testDatabase();
   database.sqlite.exec(`
     INSERT INTO user(id,name,email,createdAt,updatedAt) VALUES('admin','Admin','admin@example.test',0,0);
-    INSERT INTO profiles(user_id,role) VALUES('admin','admin');
+    INSERT INTO profiles(user_id,role,conditions,share_health) VALUES('admin','admin','["Coeliac"]',1);
     INSERT INTO places(id,slug,name,island) VALUES('place','place','Existing place','Malta');
     INSERT INTO feedback(id,place_id,kind,body) VALUES('feedback','place','imported','Community feedback');
   `);
@@ -41,6 +42,25 @@ function submit(kind: string, payload: unknown, target_id?: string) {
   );
 }
 const review = { body: 'A useful review', rating: 4, visit_date: '2026-01-01' };
+test.each([
+  { conditions: '[]', share_health: 1 },
+  { conditions: '["Coeliac"]', share_health: 0 },
+])('reviews require saved, shared conditions: %j', async ({ conditions, share_health }) => {
+  database.sqlite.prepare('UPDATE profiles SET conditions=?,share_health=?').run(conditions, share_health);
+  const response = await submit('review', { ...review, conditions: ['Coeliac'], share_health: true });
+  expect(response.status).toBe(400);
+  expect(database.sqlite.prepare('SELECT * FROM submissions').all()).toHaveLength(0);
+});
+
+test('review conditions come from the current profile rather than the request', async () => {
+  expect((await submit('review', { ...review, dietary_conditions: ['Other'] })).status).toBe(201);
+  const env = { DB: database.db } as Bindings;
+  expect((await getDetail(env, 'place'))?.feedback.find(f => f.kind === 'review')?.author?.conditions).toEqual(['Coeliac']);
+  database.sqlite.exec(`UPDATE profiles SET conditions='["Wheat allergy"]';`);
+  expect((await getDetail(env, 'place'))?.feedback.find(f => f.kind === 'review')?.author?.conditions).toEqual(['Wheat allergy']);
+  const stored = database.sqlite.prepare('SELECT payload FROM submissions').get()!;
+  expect(JSON.parse(String(stored.payload))).not.toHaveProperty('dietary_conditions');
+});
 test.each(['member', 'moderator'])(
   '%s contributions still wait for moderation even with a forged admin payload',
   async (role) => {

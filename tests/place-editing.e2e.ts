@@ -115,6 +115,44 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
   return submitted;
 }
 
+test('reviews reuse saved dietary conditions without asking for them again', async ({ page }) => {
+  const submitted = await setup(page);
+  await page.route('**/api/my/profile', route => route.fulfill({ json: {
+    id: 'user', name: 'Example User', avatar: { preset: 'initials', url: null },
+    conditions: ['Coeliac'], symptoms: null, share_health: true,
+  } }));
+  await page.goto('/places/place');
+  await expect(page.locator('.account-button span')).toHaveText('Example');
+  await page.getByRole('button', { name: 'Write a review' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Coeliac');
+  await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+  await dialog.getByRole('radio', { name: '4 stars' }).check();
+  await dialog.getByLabel('When did you visit?').fill('2026-01-01');
+  await dialog.getByLabel('Your experience').fill('Helpful staff and clear menu information.');
+  await dialog.getByRole('button', { name: 'Publish review' }).click();
+  await expect.poll(() => submitted.length).toBe(1);
+  expect(submitted[0].payload).toEqual({ body: 'Helpful staff and clear menu information.', rating: 4, visit_date: '2026-01-01' });
+});
+
+test('incomplete dietary profiles link to Account and profile failures can be retried', async ({ page }) => {
+  const submitted = await setup(page);
+  let fail = true;
+  await page.route('**/api/my/profile', route => fail
+    ? route.fulfill({ status: 503, json: { error: 'Unavailable' } })
+    : route.fulfill({ json: { id: 'user', name: 'Example User', avatar: { preset: 'initials', url: null }, conditions: [], symptoms: null, share_health: false } }));
+  await page.goto('/places/place');
+  await expect(page.locator('.account-button span')).toHaveText('Example');
+  await page.getByRole('button', { name: 'Write a review' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  fail = false;
+  await dialog.getByRole('button', { name: 'Try again' }).click();
+  await expect(dialog.getByRole('link', { name: 'Account', exact: true })).toHaveAttribute('href', '/account');
+  await expect(dialog.getByRole('button', { name: 'Publish review' })).toHaveCount(0);
+  expect(submitted).toHaveLength(0);
+});
+
 test('photo form rejects more than five files before uploading', async ({ page }) => {
   const submitted = await setup(page, true);
   await page.goto('/places/place');

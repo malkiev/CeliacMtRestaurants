@@ -142,6 +142,8 @@ Behavioural tests in `tests/business-classification.test.ts` cover migration, mi
 
 ## User profiles
 
+Posting or editing a review requires at least one saved dietary condition and the existing profile sharing switch to be enabled. The form shows the current conditions automatically and links to Account when setup is incomplete; it does not ask for separate review answers. The backend checks the profile at submission and approval. Reviews display the current shared profile conditions, so profile edits update existing reviews and disabling sharing hides them. Symptoms remain limited to the shared public profile. No new columns, migrations or per-review copies are needed.
+
 Account includes a profile editor for a public display name, initials, six SVG avatar presets, or a cropped photo. Name and avatar changes publish immediately for all members and update the identity shown on existing reviews and owner replies. Sign-in providers cannot overwrite a chosen profile name. Imported feedback retains its attribution and never links to a member profile.
 
 Conditions allow multiple optional choices: Coeliac, Gluten intolerant, Gluten sensitive, Wheat allergy, and Other. Symptom frequency after eating gluten or wheat is optional; an unanswered field is distinct from “I don’t know.” These self-reported answers are private by default. One explicit sharing switch makes them visible on `/users/:id` and shows dietary conditions beside existing reviews; symptom frequency stays on the public profile only. Disabling sharing hides these details without clearing the private answers. Public APIs, contribution identities, and rendered page data omit unshared answers. Email and permissions never appear on public profiles.
