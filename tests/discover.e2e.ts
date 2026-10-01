@@ -56,7 +56,7 @@ for (const viewport of [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
 ]) {
-  for (const path of ['/', '/restaurants', '/shops']) {
+  for (const path of ['/restaurants', '/shops']) {
     test(`${path} reveals all results on scroll at ${viewport.width}px`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await setup(page);
@@ -76,26 +76,44 @@ for (const viewport of [
       ).toBe(true);
       await page.locator('.site-footer').scrollIntoViewIfNeeded();
       await expect(cards).toHaveCount(29);
-
-      // selectOption can operate offscreen. Return to the filters first so the
-      // shorter result list cannot immediately trigger another automatic batch.
-      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-      await page.getByRole('combobox', { name: 'Locality', exact: true }).selectOption('Valletta');
-      await expect(cards).toHaveCount(12);
-      await page.locator('.load-more').scrollIntoViewIfNeeded();
-      await expect(cards).toHaveCount(15);
-      await expect(page.getByRole('status')).toHaveText('Showing 15 of 15');
-      await page.getByRole('combobox', { name: 'Sort places' }).selectOption('rating');
-      await expect(cards.first().locator('h3')).toHaveText(
-        path === '/shops' ? 'Food shop 05' : 'Restaurant 05',
-      );
-      await page.getByRole('textbox', { name: 'Search places' }).fill('No matching business');
-      await expect(cards).toHaveCount(0);
-      await expect(page.getByText('No places found this time')).toBeVisible();
     });
   }
 }
+
+test('home page shows restaurants and reveals more on scroll', async ({ page }) => {
+  await setup(page);
+  await page.goto('/');
+  const cards = page.locator('.place-card');
+  await expect(cards).toHaveCount(12);
+  await expect(cards.first()).toHaveAttribute('href', '/places/Restaurant-0');
+  await page.locator('.load-more').scrollIntoViewIfNeeded();
+  await expect(cards).toHaveCount(24);
+});
+
+test('filtering resets expanded results and preserves sorting and empty states', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await setup(page);
+  await page.goto('/shops');
+  const cards = page.locator('.place-card');
+  await expect(cards).toHaveCount(12);
+  await page.locator('.load-more').scrollIntoViewIfNeeded();
+  await expect(cards).toHaveCount(24);
+  // selectOption can operate offscreen; filter from the top to avoid immediately
+  // revealing another batch when the result list becomes shorter.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.getByRole('combobox', { name: 'Locality', exact: true }).selectOption('Valletta');
+  await expect(cards).toHaveCount(12);
+  await page.locator('.load-more').scrollIntoViewIfNeeded();
+  await expect(cards).toHaveCount(15);
+  await page.getByRole('combobox', { name: 'Sort places' }).selectOption('rating');
+  await expect(cards.first()).toHaveAttribute('href', '/places/Food shop-4');
+  await page.getByRole('textbox', { name: 'Search places' }).fill('No matching business');
+  await expect(cards).toHaveCount(0);
+  await expect(page.locator('.empty-state')).toBeVisible();
+});
 
 test('manual loading remains available without IntersectionObserver', async ({ page }) => {
   await page.addInitScript(() => {

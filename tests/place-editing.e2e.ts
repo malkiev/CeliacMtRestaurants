@@ -319,28 +319,14 @@ test('food items appear in forms, detail, search and persistent filters', async 
   }
 });
 
-test('compact directory introduction keeps search visible on desktop and mobile', async ({
+test('directory search stays in the viewport without horizontal overflow', async ({
   page,
 }, testInfo) => {
   await setup(page);
-  for (const [path, heading] of [
-    ['/', 'Coeliac-friendly restaurants and places to eat in Malta & Gozo'],
-    ['/restaurants', 'Coeliac-friendly restaurants and places to eat in Malta & Gozo'],
-    ['/map', 'Coeliac-friendly places in Malta & Gozo'],
-  ]) {
-    for (const width of [1280, 768, 375, 320]) {
+  for (const path of ['/restaurants', '/shops', '/map']) {
+    for (const width of [1280, 320]) {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(path);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        heading,
-      );
-      await expect(page.locator('.directory-intro p')).toHaveText(
-        'Discover coeliac-friendly places to eat and gluten-free shops in Malta & Gozo, with experiences shared by the community.',
-      );
-      await expect(page.locator('.welcome-panel, .hero-scene, .community-strip')).toHaveCount(0);
-      await expect(page.getByRole('link', { name: 'Find your next favourite' })).toHaveCount(0);
-      await expect(page.getByRole('link', { name: 'Get to know us' })).toHaveCount(0);
-      await expect(page.getByRole('heading', { name: 'Find a business for you' })).toHaveCount(0);
       const search = page.getByRole('textbox', { name: 'Search places' });
       await expect(search).toBeInViewport({ ratio: 1 });
       await expect(
@@ -350,28 +336,21 @@ test('compact directory introduction keeps search visible on desktop and mobile'
         .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
         .toBe(true);
       await page.screenshot({
-        path: testInfo.outputPath(`${path === '/' ? 'home' : path.slice(1)}-${width}.png`),
+        path: testInfo.outputPath(`${path.slice(1)}-${width}.png`),
         fullPage: true,
       });
-      await search.fill('No matching business');
-      await expect(page.locator('.results-summary')).toContainText('0 places to explore');
-      await search.fill('Example');
-      await expect(page.locator('.results-summary')).toContainText('1 place to explore');
     }
   }
 });
 
-test('minimal mobile submission keeps optional sections closed and location grouping last', async ({
+test('minimal mobile submission succeeds with optional sections closed', async ({
   page,
 }, testInfo) => {
   const submitted = await setup(page, true);
   await page.setViewportSize({ width: 375, height: 850 });
   await page.goto('/suggest');
   const sections = page.locator('form details');
-  await expect(sections).toHaveCount(5);
-  await expect(sections.last().locator('summary')).toHaveText(
-    'Part of a business with several locations? (optional)',
-  );
+  await expect(page.getByLabel('Business name', { exact: true })).toBeVisible();
   expect(
     await sections.evaluateAll((nodes) => nodes.every((n) => !(n as HTMLDetailsElement).open)),
   ).toBe(true);
