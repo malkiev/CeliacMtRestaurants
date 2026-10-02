@@ -5,6 +5,13 @@ import { photoResponse, registerPhotos } from '../src/server/photos';
 import type { AppEnv, Bindings } from '../src/server/env';
 import { testDatabase } from './sqlite';
 
+const session = vi.hoisted(() => ({ id: null as string | null }));
+vi.mock('../src/server/auth', () => ({
+  createAuth: () => ({
+    api: { getSession: async () => session.id ? { user: { id: session.id } } : null },
+  }),
+}));
+
 let database: ReturnType<typeof testDatabase>;
 let app: Hono<AppEnv>;
 let role: 'member' | 'moderator' | 'admin';
@@ -12,6 +19,7 @@ const put = vi.fn();
 const remove = vi.fn();
 beforeEach(() => {
   role = 'member';
+  session.id = null;
   vi.clearAllMocks();
   database = testDatabase();
   database.sqlite.exec(
@@ -222,3 +230,37 @@ test('storage failure leaves the photo inaccessible and logs cleanup retry', asy
   expect(database.sqlite.prepare('SELECT * FROM photos').all()).toHaveLength(0);
   expect(log).toHaveBeenCalled();
 });
+
+test.each(['', '?size=thumb'])(
+  'photo access follows publication, moderation and viewer permissions (%s)',
+  async (query) => {
+    database.sqlite.exec(`
+      INSERT INTO user(id,name,email,createdAt,updatedAt) VALUES('viewer','Viewer','viewer@example.test',0,0);
+      INSERT INTO profiles(user_id,role) VALUES('viewer','member');
+      INSERT INTO photos(id,place_id,author_id,object_key,thumb_key,caption,status)
+        VALUES('photo','place','user','original','thumbnail','Photo','approved');
+    `);
+    const get = vi.fn(async () => ({ body: new Uint8Array([1, 2, 3]) }));
+    const env = { DB: database.db, PHOTOS: { get } } as unknown as Bindings;
+    const request = new Request(`https://example.test/photos/photo${query}`);
+    for (const published of [1, 0]) {
+      database.sqlite.prepare('UPDATE places SET published=?').run(published);
+      for (const status of ['approved', 'pending', 'rejected']) {
+        database.sqlite.prepare('UPDATE photos SET status=?').run(status);
+        for (const viewer of ['anonymous', 'member', 'author', 'moderator', 'admin']) {
+          session.id = viewer === 'anonymous' ? null : viewer === 'author' ? 'user' : 'viewer';
+          database.sqlite.prepare('UPDATE profiles SET role=? WHERE user_id=?')
+            .run(['moderator', 'admin'].includes(viewer) ? viewer : 'member', 'viewer');
+          get.mockClear();
+          const allowed = (published === 1 && status === 'approved') ||
+            ['author', 'moderator', 'admin'].includes(viewer);
+          const response = await photoResponse(env, request, 'photo');
+          expect(response.status, `${published}/${status}/${viewer}`).toBe(allowed ? 200 : 404);
+          expect(response.headers.get('Cache-Control')).toBe('no-store');
+          if (allowed) expect(get).toHaveBeenCalledWith(query ? 'thumbnail' : 'original');
+          else expect(get).not.toHaveBeenCalled();
+        }
+      }
+    }
+  },
+);

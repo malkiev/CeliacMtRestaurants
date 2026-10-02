@@ -50,7 +50,7 @@ export async function getDetail(env: Bindings, slug: string): Promise<Detail | n
   const place = publicPlace(row);
   const [feedback, replies, photos] = await Promise.all([
     env.DB.prepare(
-      "SELECT id,place_id,author_id,author_name,kind,body,rating,visit_date,created_at,source_ref FROM feedback WHERE place_id=? AND visible=1 ORDER BY COALESCE(created_at,'') DESC",
+      "SELECT id,place_id,author_id,author_name,kind,body,rating,visit_date,created_at FROM feedback WHERE place_id=? AND visible=1 ORDER BY COALESCE(created_at,'') DESC",
     )
       .bind(place.id)
       .all(),

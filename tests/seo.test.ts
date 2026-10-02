@@ -37,6 +37,23 @@ const fetchPage = (path: string, host = 'coeliac.mt') =>
   worker.fetch(new Request(`https://${host}${path}`), env);
 const headOf = (html: string) => html.split('</head>')[0];
 
+test('private feedback provenance stays stored but never reaches public JSON or HTML', async () => {
+  database.sqlite.exec(`
+    INSERT INTO feedback(id,place_id,kind,body,source_ref)
+      VALUES('imported','one','imported','Imported public feedback','private-source-marker');
+  `);
+  for (const path of ['/api/places/cafe', '/api/bootstrap?path=/places/cafe', '/places/cafe']) {
+    const response = await fetchPage(path);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain('Imported public feedback');
+    expect(body).not.toContain('private-source-marker');
+    expect(body).not.toContain('source_ref');
+  }
+  expect(database.sqlite.prepare("SELECT source_ref FROM feedback WHERE id='imported'").get())
+    .toMatchObject({ source_ref: 'private-source-marker' });
+});
+
 test.each(['coeliac.mt', 'glutenfree.mt'])(
   'serves initial metadata on %s with the same canonical origin',
   async (host) => {

@@ -12,7 +12,7 @@ export type Place = {
   cam_verified: number; cam_verified_at: string | null; business_status: string; updated_at: string;
   rating: number | null; review_count: number; photo: string | null; source_cam?: number; source_ref?: string;
 };
-export type Feedback = { author?: (Identity & Pick<PublicProfile, 'conditions'>) | null; id: string; place_id: string; author_id?: string | null; author_name: string; kind: 'review'|'imported'; body: string; rating: number|null; visit_date: string|null; created_at: string|null; source_ref: string|null };
+export type Feedback = { author?: (Identity & Pick<PublicProfile, 'conditions'>) | null; id: string; place_id: string; author_id?: string | null; author_name: string; kind: 'review'|'imported'; body: string; rating: number|null; visit_date: string|null; created_at: string|null };
 export type Reply = { author?: Identity | null; id: string; feedback_id: string; author_name: string; body: string; created_at: string; updated_at: string };
 export type Photo = { id: string; caption: string; place_id: string };
 export type UsefulLink = { id: string; title: string; url: string; description: string; category: string; sort_order: number; last_checked: string|null; active: number };
