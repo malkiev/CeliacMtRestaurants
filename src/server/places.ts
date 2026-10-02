@@ -121,7 +121,7 @@ export async function checkDuplicate(db: D1Database, v: PlaceInput, exceptId = '
   ) {
     throw new HTTPException(409, {
       message:
-        'This branch already exists. Edit its listing, or provide a distinct branch name and address.',
+        'This place already exists. Edit the existing listing or suggest a correction. If you are adding another location, provide a different locality, address or location label.',
     });
   }
 }
