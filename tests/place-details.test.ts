@@ -152,6 +152,43 @@ test('locality choices validate the island and unknown menu choice is exclusive'
   expect(() => placeSchema.parse(input({ menu_options: ['invented'] }))).toThrow();
 });
 
+test('blank branch fields allow new businesses and identify actual duplicate listings', async () => {
+  const minimal = { name: 'Example cafe', island: 'Malta', business_types: ['Cafe'] };
+  const first = await saveAdminPlace(database.db, admin, minimal);
+  expect(database.sqlite.prepare('SELECT brand_name,branch_name FROM places WHERE id=?').get(first))
+    .toMatchObject({ brand_name: '', branch_name: '' });
+  await expect(saveAdminPlace(database.db, admin, { ...minimal, name: 'Another cafe' }))
+    .resolves.toBeTypeOf('string');
+  await expect(saveAdminPlace(database.db, admin, { ...minimal, name: ' EXAMPLE CAFE ' }))
+    .rejects.toMatchObject({
+      status: 409,
+      message: 'This place already exists. Edit the existing listing or suggest a correction. If you are adding another location, provide a different locality, address or location label.',
+    });
+  await expect(saveAdminPlace(database.db, admin, minimal, first)).resolves.toBe(first);
+  for (const location of [{ locality: 'Valletta' }, { address: '2 Example Street' }]) {
+    await expect(saveAdminPlace(database.db, admin, { ...minimal, ...location }))
+      .resolves.toBeTypeOf('string');
+  }
+});
+
+test('an imported place without a locality is classified through a correction, not a new listing', async () => {
+  database.sqlite.exec(readFileSync('data/seed.sql', 'utf8'));
+  const existing = database.sqlite.prepare('SELECT * FROM places WHERE name=?').get('Coeliac’s Zone')!;
+  expect(existing).toMatchObject({ locality: '', branch_name: '', address: '' });
+  const payload = {
+    name: 'Coeliac’s Zone', island: 'Malta',
+    business_types: ['Food shop', 'Food producer'],
+  };
+  await expect(saveAdminPlace(database.db, admin, payload)).rejects.toMatchObject({ status: 409 });
+  database.sqlite.prepare(
+    "INSERT INTO submissions(id,kind,author_id,place_id,payload,dedupe_key) VALUES('classify','correction','member',?,?,'classify')",
+  ).run(existing.id, JSON.stringify(payload));
+  await decide(database.db, admin, 'classify', true, '');
+  expect(database.sqlite.prepare('SELECT business_types,source_ref FROM places WHERE id=?').get(existing.id))
+    .toMatchObject({ business_types: JSON.stringify(payload.business_types), source_ref: existing.source_ref });
+  expect(database.sqlite.prepare('SELECT id FROM places WHERE name=?').all(payload.name)).toHaveLength(1);
+});
+
 test('repair restores only coordinates matching the latest recorded pin check', async () => {
   const id = await saveAdminPlace(database.db, admin, input());
   database.sqlite
