@@ -49,15 +49,16 @@ export function registerPhotos(api:Hono<AppEnv>){
   });
 }
 export async function photoResponse(env:Bindings,req:Request,id:string){
-  const photo=await env.DB.prepare('SELECT * FROM photos WHERE id=?').bind(id).first<{status:string;author_id:string;object_key:string;thumb_key:string}>();
-  if(!photo)return new Response('Not found',{status:404});
-  if(photo.status!=='approved'){
+  const notFound=()=>new Response('Not found',{status:404,headers:{'Cache-Control':'no-store'}});
+  const photo=await env.DB.prepare('SELECT ph.status,ph.author_id,ph.object_key,ph.thumb_key,p.published FROM photos ph JOIN places p ON p.id=ph.place_id WHERE ph.id=?').bind(id).first<{status:string;author_id:string|null;object_key:string;thumb_key:string;published:number}>();
+  if(!photo)return notFound();
+  if(photo.status!=='approved'||photo.published!==1){
     const session=await createAuth(env,req.url).api.getSession({headers:req.headers});
     const role=session?await env.DB.prepare('SELECT role FROM profiles WHERE user_id=?').bind(session.user.id).first<{role:string}>():null;
-    if(!session||(session.user.id!==photo.author_id&&!['admin','moderator'].includes(role?.role||'')))return new Response('Not found',{status:404});
+    if(!session||(session.user.id!==photo.author_id&&!['admin','moderator'].includes(role?.role||'')))return notFound();
   }
   const object=await env.PHOTOS.get(new URL(req.url).searchParams.get('size')==='thumb'?photo.thumb_key:photo.object_key);
-  if(!object)return new Response('Not found',{status:404});
+  if(!object)return notFound();
   return new Response(object.body,{headers:{'Content-Type':'image/jpeg','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 }
 export async function cleanup(env:Bindings){
