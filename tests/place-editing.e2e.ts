@@ -9,6 +9,7 @@ const foodItems: GlutenFreeItem[] = [
 function fixture() {
   return {
     id: 'place',
+    published: 1,
     slug: 'place',
     name: 'Example cafe',
     type: 'Cafe',
@@ -99,6 +100,7 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON();
       submitted.push(body);
+      if (path === '/api/admin/places/place/archive') place = { ...place, published: body.archived ? 0 : 1 };
       if (path === '/api/admin/cam')
         place = {
           ...place,
@@ -114,6 +116,22 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
   });
   return submitted;
 }
+
+test('admin archives and restores an unclassified place on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const submitted = await setup(page, false, { name: 'test', business_types: [] });
+  await page.goto('/admin');
+  await page.getByLabel('Choose a place').selectOption('place');
+  await page.getByRole('button', { name: 'Archive place', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Restore place', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Choose a place').locator('option:checked')).toContainText('(Archived)');
+  await expect(page.getByRole('link', { name: 'View place', exact: true })).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/place-archived-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Restore place', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Archive place', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View place', exact: true })).toBeVisible();
+  expect(submitted).toEqual([{ archived: true }, { archived: false }]);
+});
 
 test('reviews reuse saved dietary conditions without asking for them again', async ({ page }) => {
   const submitted = await setup(page);

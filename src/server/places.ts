@@ -161,6 +161,38 @@ export function parsePlaceInput(input: unknown, existing?: Record<string, unknow
   return placeSchema.parse(input && typeof input === 'object' ? { ...base, ...input } : input);
 }
 
+export async function setPlaceArchived(
+  db: D1Database,
+  member: Member,
+  id: string,
+  archived: boolean,
+) {
+  if (member.role !== 'admin') throw new HTTPException(403, { message: 'Admin access required' });
+  if (!(await db.prepare('SELECT id FROM places WHERE id=?').bind(id).first()))
+    throw new HTTPException(404, { message: 'Place not found' });
+  if (await owns(db, member.id, id))
+    throw new HTTPException(403, {
+      message: 'Another admin must archive or restore a business you represent',
+    });
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO audit_log(id,actor_id,action,target_id,detail) SELECT ?,?,?,id,json_object('old_published',published,'new_published',?) FROM places WHERE id=? AND published!=?",
+      )
+      .bind(
+        crypto.randomUUID(),
+        member.id,
+        archived ? 'archive_place' : 'restore_place',
+        +!archived,
+        id,
+        +!archived,
+      ),
+    db
+      .prepare('UPDATE places SET published=?,updated_at=? WHERE id=? AND published!=?')
+      .bind(+!archived, new Date().toISOString(), id, +!archived),
+  ]);
+}
+
 export async function setCatalogueEligibility(
   db: D1Database,
   member: Member,

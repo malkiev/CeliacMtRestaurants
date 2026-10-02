@@ -119,6 +119,10 @@ Typography uses DM Sans with 16px main text and sidebar links, larger secondary 
 
 ## Place details and branches
 
+In **Admin > Places**, select a listing and choose **Archive place** to hide it from the public directory, map, branch links, place page and sitemap. Archived listings remain labelled in the admin picker; **Restore place** publishes them again. Details, photos, feedback and provenance are retained. Only admins can archive or restore, and a different admin must handle a business they represent. Both actions are audited. Removing business types does not archive a listing.
+
+Archiving uses the existing `published` column; no migration, dependency or additional hosting service is required. Duplicate checks still include archived records and allow the same name for different localities, addresses or location labels. Archive an accidental duplicate rather than clearing its fields.
+
 In **Admin > Places**, choose a listing to edit all ordinary fields, or choose **Add place or branch**. Admin changes publish immediately, except edits to a business the admin represents, which require independent moderation. CAM confirmation and checked coordinates remain separate controls. An imported CAM flag preselects the confirmation checkbox but does not publish a badge until an admin saves it with a check note. Later saved decisions take precedence over imported flags.
 
 Verified owners use **Edit place details** on their place page to submit descriptions, menu options and other updates for review. Each branch is a separate listing: use a shared business name to link branches and a distinct branch name/address to identify the location. Reviews, photos, owner access, prices and CAM verification remain branch-specific. Existing listings are not automatically split or grouped.
