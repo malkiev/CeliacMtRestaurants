@@ -1,10 +1,10 @@
 import { beforeEach, afterEach, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { testDatabase } from './sqlite';
-import { saveAdminPlace } from '../src/server/places';
+import { saveAdminPlace, setPlaceArchived } from '../src/server/places';
 import { placeSchema } from '../src/server/validation';
 import { decide } from '../src/server/moderation';
-import { getDetail, publicPlace } from '../src/server/db';
+import { bootstrap, getDetail, publicPlace } from '../src/server/db';
 import type { Bindings } from '../src/server/env';
 import type { Member } from '../src/shared/types';
 
@@ -48,6 +48,41 @@ beforeEach(() => {
       .run(id, id, id + '@example.test');
 });
 afterEach(() => database.sqlite.close());
+
+test('archiving hides a place and its branch link, preserves feedback, and is reversible', async () => {
+  const id = await saveAdminPlace(database.db, admin, input());
+  const branch = await saveAdminPlace(database.db, admin, input({ branch_name: 'Other branch' }));
+  const slug = String(database.sqlite.prepare('SELECT slug FROM places WHERE id=?').get(id)?.slug);
+  const branchSlug = String(database.sqlite.prepare('SELECT slug FROM places WHERE id=?').get(branch)?.slug);
+  database.sqlite.prepare("INSERT INTO feedback(id,place_id,kind,body) VALUES('kept',?,'imported','Original feedback')").run(id);
+  const env = { DB: database.db } as Bindings;
+  await setPlaceArchived(database.db, admin, id, true);
+  await setPlaceArchived(database.db, admin, id, true);
+  expect(await getDetail(env, slug)).toBeNull();
+  expect((await bootstrap(env, 'https://example.test/')).places.map(p => p.id)).toEqual([branch]);
+  expect((await getDetail(env, branchSlug))?.branches).toEqual([]);
+  await saveAdminPlace(database.db, admin, { description: 'Edited while archived', published: 1 }, id);
+  expect(await getDetail(env, slug)).toBeNull();
+  await expect(saveAdminPlace(database.db, admin, input())).rejects.toMatchObject({ status: 409 });
+  await setPlaceArchived(database.db, admin, id, false);
+  expect((await getDetail(env, slug))?.feedback).toHaveLength(1);
+  expect((await getDetail(env, branchSlug))?.branches?.map(p => p.id)).toEqual([id]);
+  expect(database.sqlite.prepare("SELECT action FROM audit_log WHERE action IN ('archive_place','restore_place') ORDER BY rowid").all()).toEqual([{ action: 'archive_place' }, { action: 'restore_place' }]);
+});
+
+test('only independent admins can archive or restore, including unclassified listings', async () => {
+  const id = await saveAdminPlace(database.db, admin, input());
+  await saveAdminPlace(database.db, admin, { name: 'test', business_types: [] }, id);
+  for (const archived of [true, false]) {
+    for (const role of ['member', 'moderator'] as const)
+      await expect(setPlaceArchived(database.db, { ...admin, role }, id, archived)).rejects.toMatchObject({ status: 403 });
+    await setPlaceArchived(database.db, admin, id, archived);
+  }
+  await expect(setPlaceArchived(database.db, admin, 'missing', true)).rejects.toMatchObject({ status: 404 });
+  database.sqlite.prepare('INSERT INTO ownerships VALUES(?,?,?,?,1)').run('admin', id, 'other-admin', '2026-01-01');
+  for (const archived of [true, false])
+    await expect(setPlaceArchived(database.db, admin, id, archived)).rejects.toMatchObject({ status: 403 });
+});
 
 test('full admin edit preserves CAM and unchanged checked coordinates', async () => {
   const id = await saveAdminPlace(database.db, admin, input());

@@ -18,6 +18,8 @@ export function AdminPlaceEditor({
   glutenFreeItems?: GlutenFreeItem[];
 }) {
   const a = useAction();
+  const visibility = useAction();
+  const archived = place.published === 0;
   const initialVerification = place.cam_verified_at
     ? !!place.cam_verified
     : !!(place.cam_verified || place.source_cam);
@@ -33,6 +35,35 @@ export function AdminPlaceEditor({
         {place.name}
         {place.branch_name ? ` — ${place.branch_name}` : ''}
       </h2>
+      <section aria-label="Place visibility">
+        <p>
+          <strong>{archived ? 'Archived — hidden from the public' : 'Public listing'}</strong>
+        </p>
+        <p>
+          Archiving hides this place from the directory, map and public place page. Its details,
+          photos and feedback are kept, and an admin can restore it later.
+        </p>
+        {representsPlace ? (
+          <Notice>Another admin must archive or restore a business you represent.</Notice>
+        ) : (
+          <button
+            className="button"
+            disabled={visibility.busy}
+            onClick={() =>
+              void visibility.run(
+                async () => {
+                  await request(`/api/admin/places/${place.id}/archive`, { archived: !archived });
+                  await reload();
+                },
+                archived ? 'Place restored.' : 'Place archived and hidden from the public.',
+              )
+            }
+          >
+            {archived ? 'Restore place' : 'Archive place'}
+          </button>
+        )}
+        <FormStatus {...visibility} />
+      </section>
       {representsPlace && (
         <Notice>
           Changes to a business you represent require an independent moderator. Use this form to
@@ -184,11 +215,13 @@ export function AdminPlaceEditor({
         </form>
       )}
       <FormStatus {...a} />
-      <p>
-        <a className="button" href={`/places/${place.slug}`}>
-          View place
-        </a>
-      </p>
+      {!archived && (
+        <p>
+          <a className="button" href={`/places/${place.slug}`}>
+            View place
+          </a>
+        </p>
+      )}
     </div>
   );
 }

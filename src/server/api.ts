@@ -9,7 +9,7 @@ import { appUrls } from './app-urls';
 import { audit, bootstrap, getDetail, owns, placeSelect, storedPlace } from './db';
 import { adSchema, linkSchema, replySchema, reviewSchema, text } from './validation';
 import { decide, submitContribution } from './moderation';
-import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility } from './places';
+import { saveAdminPlace, parsePlaceInput, setCatalogueEligibility, setPlaceArchived } from './places';
 import { checkCover, coverSchema } from './covers';
 import { getIdentity, getPublicProfile, registerProfiles, requireReviewProfile } from './profiles';
 import { assertGlutenFreeItems, listGlutenFreeItems, registerGlutenFreeItemAdmin } from './gluten-free-items';
@@ -146,6 +146,11 @@ api.get('/admin/data',async c=>{
   ]);return c.json({users:users.results,places:places.results.map(p=>({...storedPlace(p),catalogue_enabled:!!p.catalogue_enabled})),links:links.results,adverts:adverts.results,ownerships:ownerships.results,business_types:businessTypes,gluten_free_item_catalog:glutenFreeItems});
 });
 api.post('/admin/places',async c=>{const raw=await c.req.json();const id=z.string().min(1).optional().parse(raw.id);return c.json({id:await saveAdminPlace(c.env.DB,c.get('member'),raw.place,id)});});
+api.post('/admin/places/:id/archive',async c=>{
+  const v=z.object({archived:z.boolean()}).strict().parse(await c.req.json());
+  await setPlaceArchived(c.env.DB,c.get('member'),c.req.param('id'),v.archived);
+  return c.json({ok:true});
+});
 api.post('/admin/places/:id/catalogue',async c=>{
   const v=z.object({enabled:z.boolean()}).strict().parse(await c.req.json());
   await setCatalogueEligibility(c.env.DB,c.get('member'),c.req.param('id'),v.enabled);

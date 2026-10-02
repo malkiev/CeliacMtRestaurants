@@ -3,6 +3,7 @@ export type BusinessType = { key: string; label: string; category: 'restaurant'|
 export type GlutenFreeItem = { key: string; label: string; sort_order: number; active: number };
 export type Role = 'member' | 'moderator' | 'admin';
 export type Place = {
+  published?: number;
   gluten_free_items?: string[];
   business_types?: string[]; services?: string[]; advance_orders?: 'unknown'|'yes'|'no'; premises?: 'unknown'|'public'|'none'; ordering_info?: string; price_applicability?: 'applicable'|'not_applicable'; catalogue_enabled?: boolean; source_type?: string;
   id: string; slug: string; name: string; type: string; short_description?: string; description: string; brand_name: string; branch_name: string; menu_options: string[]; locality: string; island: 'Malta' | 'Gozo'; address: string;
