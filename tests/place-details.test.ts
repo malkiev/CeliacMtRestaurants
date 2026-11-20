@@ -7,6 +7,7 @@ import { decide } from '../src/server/moderation';
 import { bootstrap, getDetail, publicPlace } from '../src/server/db';
 import type { Bindings } from '../src/server/env';
 import type { Member } from '../src/shared/types';
+import { PREPARATION_FACILITIES } from '../src/shared/place-options';
 
 let database: ReturnType<typeof testDatabase>;
 const admin: Member = {
@@ -48,6 +49,25 @@ beforeEach(() => {
       .run(id, id, id + '@example.test');
 });
 afterEach(() => database.sqlite.close());
+
+test.each(PREPARATION_FACILITIES)('$key validates, persists and survives older edits', async ({ key }) => {
+  const id = await saveAdminPlace(database.db, admin, input());
+  expect(database.sqlite.prepare(`SELECT ${key} value FROM places WHERE id=?`).get(id)?.value).toBe('unknown');
+  await saveAdminPlace(database.db, admin, { [key]: 'yes' }, id);
+  await saveAdminPlace(database.db, admin, { description: 'Unrelated edit' }, id);
+  expect(database.sqlite.prepare(`SELECT ${key} value FROM places WHERE id=?`).get(id)?.value).toBe('yes');
+  expect(placeSchema.safeParse(input({ [key]: true })).success).toBe(false);
+  expect(() => database.sqlite.prepare(`UPDATE places SET ${key}='invalid' WHERE id=?`).run(id)).toThrow();
+  database.sqlite.prepare("INSERT INTO submissions(id,kind,author_id,place_id,payload,dedupe_key) VALUES('facility','correction','member',?,?,'facility')")
+    .run(id, JSON.stringify({ [key]: 'no' }));
+  expect((await getDetail({ DB: database.db } as Bindings, String(database.sqlite.prepare('SELECT slug FROM places WHERE id=?').get(id)?.slug)))?.place[key]).toBe('yes');
+  await decide(database.db, admin, 'facility', true, '');
+  expect(database.sqlite.prepare(`SELECT ${key} value FROM places WHERE id=?`).get(id)?.value).toBe('no');
+  database.sqlite.prepare("INSERT INTO submissions(id,kind,author_id,place_id,payload,dedupe_key) VALUES('legacy','correction','owner',?,?,'legacy')")
+    .run(id, JSON.stringify({ description: 'Older pending correction' }));
+  await decide(database.db, admin, 'legacy', true, '');
+  expect(database.sqlite.prepare(`SELECT ${key} value FROM places WHERE id=?`).get(id)?.value).toBe('no');
+});
 
 test('archiving hides a place and its branch link, preserves feedback, and is reversible', async () => {
   const id = await saveAdminPlace(database.db, admin, input());

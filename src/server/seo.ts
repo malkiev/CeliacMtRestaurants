@@ -72,7 +72,7 @@ export function pageSeo(env: Bindings, url: URL, initial: Bootstrap) {
   if (place) {
     const location = [place.locality, place.island].filter(Boolean).join(', ');
     title = `${place.name}${location ? ' in ' + location : ''}`;
-    description = (place.short_description || place.description || '').replace(/\s+/g, ' ').trim();
+    description = (place.description || place.short_description || '').replace(/\s+/g, ' ').trim();
     if (!description)
       description = `Explore ${place.name}${location ? ' in ' + location : ''} in the Coeliac.mt directory, with business details and community feedback.`;
   } else if (profile) {

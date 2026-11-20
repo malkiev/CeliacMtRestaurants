@@ -4,6 +4,7 @@ import { CUISINES, PLACE_TYPES, SERVICES, businessTypes as getBusinessTypes } fr
 import {
   LOCALITIES,
   MENU_OPTIONS,
+  PREPARATION_FACILITIES,
   localityLabel,
   normaliseLocality,
 } from '../shared/place-options';
@@ -85,6 +86,7 @@ export function PlaceForm({ member, place, initial, onDone, onSave, businessType
       cuisines,
       ...(glutenFreeItems ? { gluten_free_items: items } : {}),
       menu_options: menuOptions,
+      ...Object.fromEntries(PREPARATION_FACILITIES.map(({ key }) => [key, str(key)])),
       price_applicability: pricing,
       price_min: minimum === '' ? null : Number(minimum),
       price_max: maximum === '' ? null : Number(maximum),
@@ -209,6 +211,13 @@ export function PlaceForm({ member, place, initial, onDone, onSave, businessType
               {option.label}
             </label>
           ))}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Preparation facilities</legend>
+        <p className="small muted">Dedicated means reserved exclusively for gluten-free preparation. A separate area in a shared kitchen does not qualify as a dedicated kitchen. Describe shared equipment or preparation arrangements in the menu notes.</p>
+        <div className="form-grid">
+          {PREPARATION_FACILITIES.map(({ key, label }) => <label key={key}>{label}<select name={key} defaultValue={source?.[key] || 'unknown'}><option value="unknown">Not known</option><option value="yes">Yes</option><option value="no">No</option></select></label>)}
         </div>
       </fieldset>
       <label>
@@ -337,9 +346,10 @@ export function PlaceForm({ member, place, initial, onDone, onSave, businessType
         <summary>About the business (optional)</summary>
         <div className="stack-form">
           <label>
-            Short description
-            <textarea name="short_description" rows={2} maxLength={280} placeholder="A concise introduction to this place" defaultValue={source?.short_description} readOnly={!(owner || member?.role === 'admin')} />
-            {!(owner || member?.role === 'admin') && <span className="small muted">Only verified owners and admins can edit this description.</span>}
+            Your message to visitors
+            <textarea name="short_description" rows={2} maxLength={280} placeholder="Welcome guests with a brief introduction to your business" defaultValue={source?.short_description} readOnly={!(owner || member?.role === 'admin')} />
+            <span className="small muted">A brief welcome or introduction, shown on your page and in directory cards. Up to 280 characters.</span>
+            {!(owner || member?.role === 'admin') && <span className="small muted">Only verified owners and admins can edit this message.</span>}
           </label>
           <label>
             About this place

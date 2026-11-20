@@ -129,3 +129,10 @@ export const MENU_OPTIONS = [
   { value: 'on_request', label: 'Items can be made gluten-free on request' },
   { value: 'unknown', label: "I don't know" },
 ] as const;
+
+export const PREPARATION_FACILITIES = [
+  { key: 'dedicated_gluten_free_kitchen', label: 'Dedicated gluten-free kitchen' },
+  { key: 'dedicated_gluten_free_utensils', label: 'Dedicated gluten-free utensils' },
+  { key: 'dedicated_gluten_free_fryer', label: 'Dedicated gluten-free fryer' },
+  { key: 'dedicated_gluten_free_pizza_oven', label: 'Dedicated gluten-free pizza oven' },
+] as const;

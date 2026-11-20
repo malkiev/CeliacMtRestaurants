@@ -9,6 +9,11 @@ import { assertBusinessTypes } from './business-types';
 
 type PlaceInput = z.output<typeof placeSchema>;
 const fields = [
+  'dedicated_gluten_free_kitchen',
+  'dedicated_gluten_free_utensils',
+  'dedicated_gluten_free_fryer',
+  'dedicated_gluten_free_pizza_oven',
+
   'business_types',
   'gluten_free_items',
   'services',

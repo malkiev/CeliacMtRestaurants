@@ -105,6 +105,18 @@ test('admin places and corrections publish immediately without modifying CAM', a
     database.sqlite.prepare("SELECT description,cam_verified FROM places WHERE id='place'").get(),
   ).toMatchObject({ description: 'Updated immediately', cam_verified: 0 });
 });
+test.each(['member', 'owner', 'admin'])('%s owner-message editing preserves permissions and moderation', async (role) => {
+  database.sqlite.prepare('UPDATE profiles SET role=?').run(role === 'admin' ? 'admin' : 'member');
+  if (role === 'owner') database.sqlite.exec("INSERT INTO ownerships VALUES('admin','place','other-admin','2026-01-01',1)");
+  const response = await submit('correction', { short_description: 'Welcome from our team' });
+  expect(response.status).toBe(201);
+  const submission = database.sqlite.prepare("SELECT payload,status FROM submissions WHERE kind='correction'").get()!;
+  expect(JSON.parse(String(submission.payload)).short_description).toBe(role === 'member' ? undefined : 'Welcome from our team');
+  expect(submission.status).toBe(role === 'admin' ? 'approved' : 'pending');
+  expect(database.sqlite.prepare("SELECT short_description FROM places WHERE id='place'").get()?.short_description)
+    .toBe(role === 'admin' ? 'Welcome from our team' : '');
+});
+
 test('admin owner replies and cover selections publish immediately', async () => {
   database.sqlite.exec(
     "INSERT INTO ownerships VALUES('admin','place','other-admin','2026-01-01',1); INSERT INTO photos(id,place_id,author_id,object_key,thumb_key,caption,status) VALUES('photo','place','admin','key','thumb','Photo','approved');",

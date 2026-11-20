@@ -1,5 +1,30 @@
 # Deployment plan
 
+## Preparation facilities migration
+
+Apply `0011_preparation_facilities.sql` to the target D1 database before deploying the preparation-facilities feature. Use `npm.cmd run db:migrate` for local development; hosted databases require the existing remote migration procedure. The migration adds four constrained text fields defaulting to `unknown`, preserving existing listing data. Kitchen, utensils, fryer and pizza oven remain independent. No equipment details are inferred from menu items or source text. Check both positive and hidden negative/unknown states after deployment. No new service or hosting-cost change is required.
+
+## Security rollout (20 November 2026)
+
+Deploy the dependency updates together with the application changes. Better Auth now isolates verification purposes: outstanding magic links and OAuth/account-linking state from before the update cannot complete. Ask affected users to request a new link or restart sign-in. Coordinate all deployments that share authentication storage. No database migration is required for this security change.
+
+Hosted authentication trusts only `CF-Connecting-IP`; local development trusts no caller-supplied IP headers and shares a limiter bucket. Confirm every hosted ingress passes through Cloudflare, including any Worker-to-Worker forwarding, and that the Remove visitor IP headers transform is not stripping this header. Verify real clients receive separate login counters and that a supplied `X-Forwarded-For` cannot change the counter. Keep origin checking and backend role checks enabled.
+
+Production HTTPS responses on configured `APP_URL` origins receive HSTS with `max-age=86400`. This starts with one day and does not include subdomains or preload. Confirm certificates and HTTP-to-HTTPS redirects for both public domains before increasing the duration. Redirects generated at Cloudflare's edge need their own HSTS configuration; application headers cannot cover an edge-generated redirect.
+
+Rendered application pages emit a report-only CSP with exact hashes for the bootstrap and structured-data scripts. It allows the bundled map worker, MapTiler connections, Google Fonts, and current HTTPS images. Other map providers need an explicit connection allowlist update. Inspect browser console violations during real email/Google login, maps, photo/avatar preparation, and PWA installation/offline navigation. No report collector is configured: reports stay in the browser console. Keep report-only mode until these flows pass, then switch the header to `Content-Security-Policy`; never add `unsafe-inline` to `script-src`. Static offline content is not covered by this application-page policy.
+
+Before release, verify in the service dashboards:
+
+- R2 public development URLs and custom-domain public access are disabled; originals and thumbnails must be served through application permissions.
+- The browser-visible MapTiler key is restricted to the intended production and development origins, with usage limits/alerts. It is a public browser key, not an authentication secret.
+- Cloudflare, GitHub, email-provider and administrator sign-in accounts use strong MFA or passkeys. Application administrator step-up authentication is separate future work.
+- Cloudflare edge abuse rules cover sign-in and resource-heavy endpoints on every public hostname and any enabled `workers.dev` route. Set thresholds from observed traffic, then verify legitimate users can still sign in and upload.
+- D1 recovery and a separate R2 backup are available; rehearse restoration in isolated resources and record the result. Do not restore test accounts or private exports into production.
+- Enable GitHub Dependabot alerts/security updates and secret scanning where available. The checked-in Dependabot configuration proposes weekly npm and Actions updates; CI rejects high/critical npm advisories. These features depend on repository settings and are not activated merely by editing YAML.
+
+Run `npm.cmd run check`, `npm.cmd run test:e2e`, `npm.cmd audit`, and `npx.cmd wrangler deploy --dry-run` before release. After deployment, inspect headers on pages, errors and API responses, restart sign-in flows, and confirm archived photos and private profile fields remain inaccessible. No new hosted service is introduced; account-level abuse controls may depend on the selected Cloudflare plan.
+
 ## Multiple domains and the coeliac.mt transition
 
 `APP_URL` accepts comma-separated HTTP(S) origins, without paths, query strings, credentials or wildcards:

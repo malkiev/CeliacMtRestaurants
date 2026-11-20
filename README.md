@@ -144,6 +144,18 @@ Migration `0006_business_classification.sql` is applied in this workspace. On ot
 
 Behavioural tests in `tests/business-classification.test.ts` cover migration, minimal listings, filtering, location privacy, legacy submissions, and catalogue permissions/auditing. Browser checks cover collapsed forms, minimal submission, invalid-field focus, multi-type filters, and mobile producer listings.
 
+## Security maintenance
+
+Security updates are pinned in `package.json` and `package-lock.json`. Run `npm.cmd audit` to check current advisories; CI blocks high and critical findings. Dependabot is configured for weekly npm and GitHub Actions updates. See [security rollout and account checks](DEPLOYMENT.md#security-rollout-20-november-2026) for client-IP trust, report-only CSP, HSTS, authentication-link cutover and recovery validation.
+
+## Preparation facilities
+
+Place pages show dedicated gluten-free kitchen, utensils, fryer and pizza oven facilities under **Good to know**, only when recorded as present. Each field has independent **Yes / No / Not known** choices near the menu fields. Dedicated means exclusively gluten-free; shared arrangements belong in the menu notes. Community and owner changes use existing moderation; admins publish directly. Facilities do not change CAM verification. Apply migration `0011_preparation_facilities.sql` before deploying. Existing listings default to unknown; omitted values in older clients, imports and queued corrections preserve existing records. No new service is required.
+
+## Owner messages
+
+The existing short description is presented as **A word from the team** near the top of a place page. Cards show a labelled, two-line **From the team** excerpt, falling back to the general description without that label. Existing text is retained. Verified owners and admins can edit the message (280 characters); owner edits still require moderation. **About this place** remains the general description and is preferred for search metadata. No migration or new service is required.
+
 ## User profiles
 
 Posting or editing a review requires at least one saved dietary condition and the existing profile sharing switch to be enabled. The form shows the current conditions automatically and links to Account when setup is incomplete; it does not ask for separate review answers. The backend checks the profile at submission and approval. Reviews display the current shared profile conditions, so profile edits update existing reviews and disabling sharing hides them. Symptoms remain limited to the shared public profile. No new columns, migrations or per-review copies are needed.

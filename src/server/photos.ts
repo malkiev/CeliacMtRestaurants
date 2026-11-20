@@ -1,4 +1,5 @@
 import jpeg from 'jpeg-js';
+import type { RawImageData } from 'jpeg-js';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { Hono } from 'hono';
@@ -31,7 +32,7 @@ export function registerPhotos(api:Hono<AppEnv>){
     if(!await c.env.DB.prepare('SELECT id FROM places WHERE id=? AND published=1').bind(placeId).first())throw new HTTPException(404);
     const count=await c.env.DB.prepare('SELECT COUNT(*) count FROM photos WHERE author_id=? AND created_at>?').bind(m.id,new Date(Date.now()-86400000).toISOString()).first<{count:number}>();
     if((count?.count||0)>=20)throw new HTTPException(429,{message:'You can upload up to 20 photos per day. Please try again tomorrow.'});
-    const bytes=new Uint8Array(await file.arrayBuffer());let decoded:ReturnType<typeof jpeg.decode>;
+    const bytes=new Uint8Array(await file.arrayBuffer());let decoded:RawImageData<Uint8Array>;
     try{decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:40,tolerantDecoding:false});}catch{throw new HTTPException(400,{message:'This file is not a supported JPEG image.'});}
     if(decoded.width>1280||decoded.height>1280)throw new HTTPException(400,{message:'Images must be resized to at most 1280 pixels.'});
     // Decode and re-encode server-side as well: never trust client metadata stripping.

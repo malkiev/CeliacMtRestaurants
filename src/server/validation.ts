@@ -17,6 +17,11 @@ export const placeSchema = z
   .object({
     catalogue_enabled: z.never().optional(),
     description: optionalString(2000),
+    dedicated_gluten_free_kitchen: z.enum(['yes', 'no', 'unknown']).default('unknown'),
+    dedicated_gluten_free_utensils: z.enum(['yes', 'no', 'unknown']).default('unknown'),
+    dedicated_gluten_free_fryer: z.enum(['yes', 'no', 'unknown']).default('unknown'),
+    dedicated_gluten_free_pizza_oven: z.enum(['yes', 'no', 'unknown']).default('unknown'),
+
     gluten_free_items: z.array(z.string().min(2).max(64)).max(100).default([]),
     short_description: optionalString(280),
     brand_name: optionalString(120),

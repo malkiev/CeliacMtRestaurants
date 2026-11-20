@@ -3,6 +3,11 @@ export type BusinessType = { key: string; label: string; category: 'restaurant'|
 export type GlutenFreeItem = { key: string; label: string; sort_order: number; active: number };
 export type Role = 'member' | 'moderator' | 'admin';
 export type Place = {
+  dedicated_gluten_free_kitchen?: 'yes' | 'no' | 'unknown';
+  dedicated_gluten_free_utensils?: 'yes' | 'no' | 'unknown';
+  dedicated_gluten_free_fryer?: 'yes' | 'no' | 'unknown';
+  dedicated_gluten_free_pizza_oven?: 'yes' | 'no' | 'unknown';
+
   published?: number;
   gluten_free_items?: string[];
   business_types?: string[]; services?: string[]; advance_orders?: 'unknown'|'yes'|'no'; premises?: 'unknown'|'public'|'none'; ordering_info?: string; price_applicability?: 'applicable'|'not_applicable'; catalogue_enabled?: boolean; source_type?: string;
