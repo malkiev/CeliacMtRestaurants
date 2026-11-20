@@ -117,6 +117,56 @@ async function setup(page: Page, owner = false, patch: Record<string, unknown> =
   return submitted;
 }
 
+for (const width of [375, 1280]) {
+  test(`preparation facilities display and editing at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const submissions = await setup(page, true, {
+      dedicated_gluten_free_kitchen: 'yes',
+      dedicated_gluten_free_utensils: 'yes',
+      dedicated_gluten_free_fryer: 'unknown',
+      dedicated_gluten_free_pizza_oven: 'no',
+    });
+    await page.goto('/places/place');
+    const facilities = page.getByRole('region', { name: 'Preparation facilities' });
+    await expect(facilities.getByText('Dedicated gluten-free kitchen', { exact: true })).toBeVisible();
+    await expect(facilities.getByText('Dedicated gluten-free utensils', { exact: true })).toBeVisible();
+    await expect(facilities.locator('li')).toHaveCount(2);
+    await facilities.scrollIntoViewIfNeeded();
+    if (width === 375) await page.screenshot({ path: 'docs/screenshots/preparation-facilities-mobile.png' });
+    await page.getByRole('button', { name: 'Edit place details' }).click();
+    const kitchen = page.getByRole('combobox', { name: 'Dedicated gluten-free kitchen', exact: true });
+    await expect(kitchen).toHaveValue('yes');
+    await expect(page.getByRole('combobox', { name: 'Dedicated gluten-free pizza oven', exact: true })).toHaveValue('no');
+    const fryer = page.getByRole('combobox', { name: 'Dedicated gluten-free fryer', exact: true });
+    await expect(fryer).toHaveValue('unknown');
+    await fryer.selectOption('yes');
+    await kitchen.selectOption('unknown');
+    await page.getByRole('button', { name: 'Submit place updates', exact: true }).click();
+    await expect.poll(() => submissions.length).toBe(1);
+    expect(submissions[0].payload).toMatchObject({ dedicated_gluten_free_kitchen: 'unknown', dedicated_gluten_free_fryer: 'yes', dedicated_gluten_free_utensils: 'yes', dedicated_gluten_free_pizza_oven: 'no' });
+  });
+  test(`owner messages appear on cards and place pages at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const message = 'Welcome to our family cafe!\nWe look forward to meeting you. '.repeat(4).slice(0, 280);
+    await setup(page, true, { short_description: message });
+    await page.goto('/');
+    const card = page.locator('.place-card').first();
+    await expect(card.getByText('From the team', { exact: true })).toBeVisible();
+    await expect(card.locator('.place-card-description')).toHaveCSS('-webkit-line-clamp', '2');
+    if (width === 375) await page.screenshot({ path: 'docs/screenshots/owner-message-grid-mobile.png' });
+    await page.goto('/places/place');
+    const panel = page.getByRole('region', { name: 'A word from the team' });
+    await expect(panel).toBeVisible();
+    await expect(panel.locator('p')).toHaveText(message);
+    await expect(panel.locator('p')).toHaveCSS('white-space', 'pre-line');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (width === 375) await page.screenshot({ path: 'docs/screenshots/owner-message-page-mobile.png' });
+    await page.getByRole('button', { name: 'Edit place details', exact: false }).click();
+    await page.getByText('About the business (optional)', { exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Your message to visitors', exact: false })).toHaveValue(message);
+  });
+}
+
 test('admin archives and restores an unclassified place on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   const submitted = await setup(page, false, { name: 'test', business_types: [] });

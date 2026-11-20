@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import worker from '../src/server/index';
 import type { Bindings } from '../src/server/env';
 import { testDatabase } from './sqlite';
+import { PREPARATION_FACILITIES } from '../src/shared/place-options';
 
 let database: ReturnType<typeof testDatabase>;
 let env: Bindings;
@@ -37,6 +39,95 @@ const fetchPage = (path: string, host = 'coeliac.mt') =>
   worker.fetch(new Request(`https://${host}${path}`), env);
 const headOf = (html: string) => html.split('</head>')[0];
 
+test('preparation facilities show only affirmative values, independently of CAM', async () => {
+  expect(await (await fetchPage('/places/cafe')).text()).not.toContain('aria-label="Preparation facilities"');
+  for (const {key, label} of PREPARATION_FACILITIES) {
+    database.sqlite.prepare(`UPDATE places SET ${key}='yes' WHERE id='one'`).run();
+    expect(await (await fetchPage('/places/cafe')).text()).toContain(`<li>${label}</li>`);
+    database.sqlite.prepare(`UPDATE places SET ${key}='no' WHERE id='one'`).run();
+    expect(await (await fetchPage('/places/cafe')).text()).not.toContain('aria-label="Preparation facilities"');
+  }
+  database.sqlite.exec("UPDATE places SET dedicated_gluten_free_kitchen='yes',dedicated_gluten_free_utensils='yes' WHERE id='one'");
+  const html = await (await fetchPage('/places/cafe')).text();
+  expect(html).toContain('<li>Dedicated gluten-free kitchen</li>');
+  expect(html).toContain('<li>Dedicated gluten-free utensils</li>');
+  expect(html).not.toContain('<li>Dedicated gluten-free fryer</li>');
+  expect(html).not.toContain('Verified by CAM');
+});
+
+test('owner messages are labelled, escaped and separate from directory descriptions', async () => {
+  database.sqlite.prepare("UPDATE places SET business_types='[\"Cafe\"]',short_description=?,description=? WHERE id=?")
+    .run('Welcome <guests>!\nMeet our team.', 'An independent introduction.', 'one');
+  const html = await (await fetchPage('/places/cafe')).text();
+  expect(html).toContain('A word from the team');
+  expect(html).toContain('Welcome &lt;guests&gt;!\nMeet our team.');
+  expect(html.indexOf('id="owner-message-heading"')).toBeLessThan(html.indexOf('Gluten-free items available'));
+  expect(headOf(html)).toContain('content="An independent introduction."');
+  const grid = await (await fetchPage('/')).text();
+  expect(grid).toContain('From the team');
+  database.sqlite.prepare("UPDATE places SET description='' WHERE id='one'").run();
+  expect(headOf(await (await fetchPage('/places/cafe')).text())).toContain('Welcome &lt;guests&gt;! Meet our team.');
+  database.sqlite.prepare("UPDATE places SET short_description='',description='General description' WHERE id='one'").run();
+  expect(await (await fetchPage('/places/cafe')).text()).not.toContain('A word from the team');
+  const fallback = await (await fetchPage('/')).text();
+  expect(fallback).toContain('General description');
+  expect(fallback).not.toContain('From the team');
+});
+
+test('report-only CSP authorises precisely the rendered inline scripts', async () => {
+  const response = await fetchPage('/places/cafe');
+  const policy = response.headers.get('Content-Security-Policy-Report-Only')!;
+  expect(response.headers.get('Content-Security-Policy')).toBeNull();
+  const html = await response.text();
+  const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>(.*?)<\/script>/g)]
+    .filter(([tag]) => !tag.includes('src='))
+    .map(([, body]) => body);
+  expect(inlineScripts.length).toBeGreaterThanOrEqual(2);
+  for (const body of inlineScripts)
+    expect(policy).toContain(`'sha256-${createHash('sha256').update(body).digest('base64')}'`);
+  expect(policy).toContain("object-src 'none'");
+  expect(policy).toContain("base-uri 'none'");
+  expect(policy).toContain("worker-src 'self'");
+  expect(policy.split('; ').find((directive) => directive.startsWith('script-src'))).not.toContain(
+    'unsafe-inline',
+  );
+  expect(policy).not.toContain(createHash('sha256').update('alert(1)').digest('base64'));
+});
+
+test('HSTS is restricted to configured production HTTPS origins', async () => {
+  expect((await fetchPage('/')).headers.get('Strict-Transport-Security')).toBe('max-age=86400');
+  expect((await fetchPage('/', 'glutenfree.mt')).headers.get('Strict-Transport-Security')).toBe(
+    'max-age=86400',
+  );
+  expect(
+    (await fetchPage('/', 'preview.example.test')).headers.has('Strict-Transport-Security'),
+  ).toBe(false);
+  expect(
+    (await worker.fetch(new Request('http://coeliac.mt/'), env)).headers.has(
+      'Strict-Transport-Security',
+    ),
+  ).toBe(false);
+  env.ENVIRONMENT = 'development';
+  const local = await fetchPage('/');
+  expect(local.headers.has('Strict-Transport-Security')).toBe(false);
+  expect(local.headers.has('Content-Security-Policy-Report-Only')).toBe(false);
+});
+
+test('oversized rejected requests still receive security headers', async () => {
+  const response = await worker.fetch(
+    new Request('https://coeliac.mt/api/submissions', {
+      method: 'POST',
+      headers: { Origin: 'https://coeliac.mt' },
+      body: 'x'.repeat(1024 * 1024 + 1),
+    }),
+    env,
+  );
+  expect(response.status).toBe(413);
+  expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+  expect(response.headers.get('X-Frame-Options')).toBe('DENY');
+  expect(response.headers.get('Strict-Transport-Security')).toBe('max-age=86400');
+});
+
 test('private feedback provenance stays stored but never reaches public JSON or HTML', async () => {
   database.sqlite.exec(`
     INSERT INTO feedback(id,place_id,kind,body,source_ref)
@@ -50,8 +141,9 @@ test('private feedback provenance stays stored but never reaches public JSON or 
     expect(body).not.toContain('private-source-marker');
     expect(body).not.toContain('source_ref');
   }
-  expect(database.sqlite.prepare("SELECT source_ref FROM feedback WHERE id='imported'").get())
-    .toMatchObject({ source_ref: 'private-source-marker' });
+  expect(
+    database.sqlite.prepare("SELECT source_ref FROM feedback WHERE id='imported'").get(),
+  ).toMatchObject({ source_ref: 'private-source-marker' });
 });
 
 test.each(['coeliac.mt', 'glutenfree.mt'])(

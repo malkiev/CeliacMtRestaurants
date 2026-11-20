@@ -11,8 +11,20 @@ import { bootstrap } from './db';
 import { cleanup, photoResponse, registerPhotos } from './photos';
 import { avatarResponse } from './profiles';
 import { escapeHtml, injectSeo, isIndexableHost, pageSeo, scriptJson, sitemapPages } from './seo';
+import { contentSecurityPolicy } from './security';
 
 const app = new Hono<AppEnv>();
+app.use('*', async (c, next) => {
+  await next();
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.header('X-Frame-Options', 'DENY');
+  c.header('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
+  const url = new URL(c.req.url);
+  // Begin with one day, without committing other subdomains or requesting preload.
+  if (url.protocol === 'https:' && isIndexableHost(c.env, url))
+    c.header('Strict-Transport-Security', 'max-age=86400');
+});
 app.use(
   '*',
   bodyLimit({
@@ -20,13 +32,6 @@ app.use(
     onError: (c) => c.json({ error: 'Request is too large' }, 413),
   }),
 );
-app.use('*', async (c, next) => {
-  await next();
-  c.header('X-Content-Type-Options', 'nosniff');
-  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  c.header('X-Frame-Options', 'DENY');
-  c.header('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
-});
 registerPhotos(api);
 app.route('/api', api);
 app.get('/photos/:id', (c) => photoResponse(c.env, c.req.raw, c.req.param('id')));
@@ -77,9 +82,18 @@ app.get('*', async (c) => {
     <App initial={initial} path={path} search={new URL(c.req.url).search} />,
   );
   const json = scriptJson(initial);
+  const bootstrapScript = `window.__BOOTSTRAP__=${json}`;
+  const structuredScripts = [
+    ...seo.head.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g),
+  ].map((match) => match[1]);
+  if (c.env.ENVIRONMENT !== 'development')
+    c.header(
+      'Content-Security-Policy-Report-Only',
+      await contentSecurityPolicy([bootstrapScript, ...structuredScripts]),
+    );
   const html = injectSeo(await template.text(), seo.head)
     .replace('<!--app-->', () => markup)
-    .replace('<!--bootstrap-->', () => `<script>window.__BOOTSTRAP__=${json}</script>`);
+    .replace('<!--bootstrap-->', () => `<script>${bootstrapScript}</script>`);
   c.header('Cache-Control', 'no-store');
   if (seo.noindex) c.header('X-Robots-Tag', 'noindex, follow');
   return c.html(html, seo.status);

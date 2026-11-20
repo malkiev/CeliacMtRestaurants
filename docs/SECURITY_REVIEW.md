@@ -1,4 +1,18 @@
-# Security review — 2 October 2026
+# Security review
+
+## 20 November 2026 update
+
+The PHP2Shell reports concern a PHP runtime; this application uses TypeScript on Cloudflare Workers and requires no PHP patch. A fresh registry audit identified 14 affected package entries (including transitive propagation), superseding the October audit result below. No live exploit attempts or account configuration changes were performed.
+
+Updated Better Auth to 1.7.27, Hono to 4.13.19, Zod to 4.6.7, Wrangler to 4.165.0, Worker definitions to 5.20261118.1, Vite to 8.3.8, Vitest to 5.1.1, and concurrently to 10.0.7, regenerating the lockfile. The final online audit reports zero vulnerabilities. The existing hashed magic-link configuration already matches a workaround for [Better Auth's critical purpose-confusion advisory](https://github.com/better-auth/better-auth/security/advisories/GHSA-965c-763c-88jm); the update removes reliance on that workaround. The application uses wildcard role middleware relevant to [Hono's router advisory](https://github.com/honojs/hono/security/advisories/GHSA-h7mg-cq63-vhpq), but this review did not demonstrate a bypass in the previous application routes.
+
+Hosted authentication now trusts only Cloudflare's client-IP header. Local authentication ignores caller-supplied IP headers. Rendered application pages emit a report-only CSP using exact hashes for inline bootstrap and structured-data scripts. Configured production HTTPS hosts emit one-day HSTS without subdomains or preload. Security headers now also cover body-limit rejections. Corrected two JPEG output type declarations to match their existing Uint8Array decoding options; runtime processing is unchanged. Weekly Dependabot configuration and a high/critical CI audit gate are included.
+
+Validation: TypeScript checks, 136 behavioural tests across 13 files, production build, dependency-tree validation, and Wrangler deployment dry run passed. Two additional authentication IP-resolution tests passed separately. Browser tests passed 35/36 on the initial run; the SEO hydration test exceeded its 30-second timeout during setup and passed on an isolated rerun (14.6 seconds). The existing MapLibre chunk-size warning remains. These browser tests do not exercise real Google/email delivery or production Cloudflare storage and edge settings.
+
+Changes remain local and are not deployed. The CSP is observational, with browser-console diagnostics and no report collector; enforcement and longer HSTS require rollout validation. No schema migration or new service is required. Pending pre-upgrade authentication links/state must be restarted. See [the security rollout checklist](../DEPLOYMENT.md#security-rollout-20-november-2026) for coordinated deployment, R2 privacy, map-key restrictions, MFA, abuse controls, dependency alerts and restoration checks. Those account-level checks have not been performed.
+
+## 2 October 2026 review (historical)
 
 ## Remediation status
 

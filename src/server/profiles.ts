@@ -2,6 +2,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { Hono } from 'hono';
 import { z } from 'zod';
 import jpeg from 'jpeg-js';
+import type { RawImageData } from 'jpeg-js';
 import type { AppEnv, Bindings } from './env';
 import {
   AVATAR_PRESETS,
@@ -175,7 +176,7 @@ export function registerProfiles(api: Hono<AppEnv>) {
       throw new HTTPException(400, {
         message: 'Use the avatar picker to upload a JPEG of at most 100 KB.',
       });
-    let decoded: ReturnType<typeof jpeg.decode>;
+    let decoded: RawImageData<Uint8Array>;
     try {
       decoded = jpeg.decode(new Uint8Array(await file.arrayBuffer()), {
         useTArray: true,

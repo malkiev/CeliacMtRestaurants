@@ -12,6 +12,9 @@ export function createAuth(env: Bindings, requestUrl?: string) {
     baseURL,
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: appUrls(env),
+    // Hosted requests enter through Cloudflare, which supplies this header.
+    // Local requests deliberately share a bucket instead of trusting caller headers.
+    advanced: { ipAddress: { ipAddressHeaders: isLocal(env, baseURL) ? [] : ['cf-connecting-ip'] } },
     rateLimit: { enabled: true, storage: 'database', window: 60, max: 30 },
     socialProviders: env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } } : {},
     account: { accountLinking: { enabled: true, trustedProviders: ['google'] } },

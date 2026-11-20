@@ -30,6 +30,8 @@ jobs:
           node-version: '22.22.0'
           cache: npm
       - run: npm ci
+      - name: Audit dependencies for high and critical advisories
+        run: npm audit --audit-level=high
       - name: Typecheck, behavioural tests, and production build
         run: npm run check
       - name: Install Chromium
